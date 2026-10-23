@@ -4,5 +4,6 @@ members = [
     "c2rust-intermediate",
     "doomgeneric-sys",
     "room",
+    "room-source",
 ]
 resolver = "2"

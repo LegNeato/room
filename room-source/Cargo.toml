@@ -1,0 +1,8 @@
+[package]
+name = "room-source"
+version = "0.1.0"
+edition = "2021"
+description = "Source location for builds that compile Room modules in their own crate"
+repository = "https://github.com/LegNeato/room"
+license = "GPL-2.0"
+publish = false
