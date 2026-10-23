@@ -29,6 +29,8 @@
 use std::ffi::{c_int, c_short, c_uchar, c_void};
 use std::ptr;
 
+mod tangent;
+
 use super::m_fixed::{angle_t, fixed_t, FixedMul, FRACBITS};
 use super::r_bsp::drawseg_t;
 use super::tables::{self, ANG180, ANG90, ANGLETOFINESHIFT};
@@ -69,9 +71,6 @@ const MAXLIGHTSCALE: usize = 48;
 
 /// Shift applied to a column scale value to derive an index into `scalelight[n]`.
 const LIGHTSCALESHIFT: u32 = 12;
-
-/// Mask for the fine-angle table (8192 entries, indices 0..=8191).
-const FINEMASK: usize = 0x1FFF;
 
 /// Screen width in pixels, re-exported from [`i_video`] for local use.
 const SCREENWIDTH: usize = crate::doom::i_video::SCREENWIDTH as usize;
@@ -500,10 +499,8 @@ unsafe fn R_RenderSegLoop() {
 
         let texturecolumn: fixed_t;
         if segtextured != 0 {
-            let angle =
-                (rw_centerangle.wrapping_add(xtoviewangle[rw_x as usize])) >> ANGLETOFINESHIFT;
-            texturecolumn =
-                rw_offset - FixedMul(tables::finetangent[angle as usize & FINEMASK], rw_distance);
+            let angle = rw_centerangle.wrapping_add(xtoviewangle[rw_x as usize]);
+            texturecolumn = rw_offset - FixedMul(tangent::lookup(angle), rw_distance);
 
             let mut index = (rw_scale as u32) >> LIGHTSCALESHIFT;
             if index >= MAXLIGHTSCALE as u32 {
