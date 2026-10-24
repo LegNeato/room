@@ -406,26 +406,14 @@ pub unsafe extern "C" fn I_StartTic() {
 #[no_mangle]
 pub unsafe extern "C" fn I_UpdateNoBlit() {}
 
-/// Blit and present one frame.
-///
-/// In framebuffer mode, converts the 320x200 buffer at `I_VideoBuffer` into the
-/// final framebuffer at `DG_ScreenBuffer`, centring it inside the
-/// configured `s_Fb.xres x s_Fb.yres` window with `x_offset` and
-/// `y_offset` padding bytes per row, repeating each Doom scanline
-/// `fb_scaling` times to upscale. After the conversion, the platform
-/// callback `DG_DrawFrame` is invoked to present.
-///
-/// The padding math saturates at zero (`.max(0)`) so a framebuffer
-/// smaller than the scaled image still produces a valid pointer
-/// arithmetic - corresponding C code performs unsigned subtraction
-/// and would wrap around in that case.
+/// Calls the platform draw callback with the selected output format.
+/// Framebuffer mode first expands the indexed pixels at the configured scale.
+/// Indexed mode leaves `DG_ScreenBuffer` unchanged.
 ///
 /// # Safety
-///
-/// Reads `SCREENWIDTH * SCREENHEIGHT` bytes from `I_VideoBuffer` and
-/// writes a region of `DG_ScreenBuffer` whose extent depends on the
-/// framebuffer geometry. Caller must ensure both pointers are valid
-/// and the framebuffer is large enough for the configured layout.
+/// The caller must exclude other engine access during this operation.
+/// In framebuffer mode, `I_VideoBuffer` must contain `SCREENWIDTH * SCREENHEIGHT`
+/// readable bytes. `DG_ScreenBuffer` must hold the configured output extent.
 #[no_mangle]
 pub unsafe extern "C" fn I_FinishUpdate() {
     if OUTPUT_MODE == OutputMode::Indexed {
