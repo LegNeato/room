@@ -58,7 +58,8 @@ pub unsafe fn set_output_mode(mode: OutputMode) {
 ///
 /// # Safety
 /// The caller must exclude engine mutations for the entire returned lifetime.
-/// The graphics buffer must remain allocated for that lifetime.
+/// Every pixel must be initialized. The graphics buffer must remain allocated
+/// for that lifetime.
 pub unsafe fn indexed_frame<'frame>() -> Option<(
     &'frame [u8; (SCREENWIDTH * SCREENHEIGHT) as usize],
     &'frame [u32; 256],

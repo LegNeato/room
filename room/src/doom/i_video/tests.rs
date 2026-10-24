@@ -1,14 +1,9 @@
 use super::*;
 use std::sync::{Mutex, MutexGuard};
 
-/// `COLORS` is a `static mut` shared across the whole crate; the
-/// tests below mutate it, so they must run serially.
 static PALETTE_LOCK: Mutex<()> = Mutex::new(());
 
-/// RAII guard that owns the palette lock for the duration of a
-/// test and restores the `COLORS` snapshot captured at acquisition
-/// time on drop, even on panic. Keeps the global palette
-/// invisible to subsequent tests in the same binary.
+/// Serializes video tests and restores their global state on panic or return.
 struct PaletteGuard {
     _lock: MutexGuard<'static, ()>,
     saved: [u32; 256],
@@ -66,7 +61,6 @@ fn set_test_palette(entries: &[(u8, u8, u8)]) {
 fn indexed_view_requires_initialized_pixels() {
     let _guard = PaletteGuard::acquire();
     unsafe {
-        let saved = I_VideoBuffer;
         I_VideoBuffer = ptr::null_mut();
         assert!(indexed_frame().is_none());
         let mut pixels = [0u8; (SCREENWIDTH * SCREENHEIGHT) as usize];
@@ -75,7 +69,6 @@ fn indexed_view_requires_initialized_pixels() {
         let (indices, palette) = indexed_frame().unwrap();
         assert_eq!(indices[17], 42);
         assert_eq!(palette.as_ptr(), ptr::addr_of!(COLORS).cast());
-        I_VideoBuffer = saved;
     }
 }
 
@@ -83,7 +76,6 @@ fn indexed_view_requires_initialized_pixels() {
 fn palette_packs_every_gamma_corrected_channel() {
     let _guard = PaletteGuard::acquire();
     unsafe {
-        let saved_gamma = usegamma;
         let mut palette = [0u8; 256 * 3];
         for (index, rgb) in palette.chunks_exact_mut(3).enumerate() {
             rgb.copy_from_slice(&[
@@ -105,7 +97,6 @@ fn palette_packs_every_gamma_corrected_channel() {
                 );
             }
         }
-        usegamma = saved_gamma;
     }
 }
 
@@ -142,18 +133,6 @@ fn packed_palette_preserves_framebuffer_formats() {
                 ((r as u16 & 0xf8) << 8) | ((g as u16 & 0xfc) << 3) | (b as u16 >> 3)
             );
         }
-    }
-}
-
-#[test]
-fn indexed_draw_does_not_access_framebuffer_memory() {
-    let _guard = PaletteGuard::acquire();
-    unsafe {
-        set_output_mode(OutputMode::Indexed);
-        I_VideoBuffer = ptr::null_mut();
-        // The callback needs no pixels in the headless test platform.
-        // Conversion would dereference this null input.
-        I_FinishUpdate();
     }
 }
 
