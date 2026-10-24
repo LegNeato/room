@@ -1,9 +1,9 @@
 //! Rust port of vendor/doomgeneric/i_video.c.
 //!
 //! Video output shim: allocates the palette-indexed `I_VideoBuffer`,
-//! expands it through the gamma-corrected palette into BGRA
-//! `DG_ScreenBuffer` on `I_FinishUpdate`, and forwards calls to the
-//! platform layer.
+//! expands it through the gamma-corrected palette into BGRA by default.
+//! Indexed output skips that expansion. Both modes call the platform draw
+//! callback from `I_FinishUpdate`.
 //!
 //! The C source supports two compile-time paths: an 8-bit `CMAP256`
 //! direct-blit and a 16/32-bit framebuffer path. Only the latter is
@@ -38,19 +38,37 @@ pub const SCREENWIDTH: c_int = 320;
 /// Doom's logical screen height in palette-indexed pixels.
 pub const SCREENHEIGHT: c_int = 200;
 
-/// 32-bit pixel as the framebuffer expects it: BGRA with alpha last.
+#[path = "i_video/output.rs"]
+mod output;
+pub use output::OutputMode;
+
+static mut OUTPUT_MODE: OutputMode = OutputMode::Framebuffer;
+
+/// Selects whether each draw expands the indexed image into the framebuffer.
+/// The platform draw callback runs in both modes.
 ///
-/// Mirrors `struct color` in `i_video.c`. `#[repr(C)]` because
-/// pointers into this layout cross the FFI boundary (the
-/// `DG_ScreenBuffer` is written byte by byte but interpreted as
-/// 32-bit pixels by the host platform's display code).
-#[repr(C)]
-#[derive(Clone, Copy)]
-struct Color {
-    b: u8,
-    g: u8,
-    r: u8,
-    a: u8,
+/// # Safety
+/// The caller must exclude all other engine access during this operation.
+pub unsafe fn set_output_mode(mode: OutputMode) {
+    unsafe { OUTPUT_MODE = mode };
+}
+
+/// Borrows the current indexed pixels and active gamma-corrected palette.
+/// Returns `None` before graphics initialization.
+///
+/// # Safety
+/// The caller must exclude engine mutations for the entire returned lifetime.
+/// The graphics buffer must remain allocated for that lifetime.
+pub unsafe fn indexed_frame<'frame>() -> Option<(
+    &'frame [u8; (SCREENWIDTH * SCREENHEIGHT) as usize],
+    &'frame [u32; 256],
+)> {
+    unsafe {
+        let pixels = I_VideoBuffer
+            .cast::<[u8; (SCREENWIDTH * SCREENHEIGHT) as usize]>()
+            .as_ref()?;
+        Some((pixels, &*ptr::addr_of!(COLORS)))
+    }
 }
 
 /// Bit-field descriptor for one colour channel inside the
@@ -128,15 +146,9 @@ pub static mut fb_scaling: c_int = 1;
 #[no_mangle]
 pub static mut usemouse: c_int = 0;
 
-/// Active 256-entry gamma-corrected palette. Filled from the WAD
-/// PLAYPAL by `I_SetPalette` and consumed by `cmap_to_fb` /
-/// `cmap_to_rgb565`. Mirrors the C `colors[256]` static array.
-static mut COLORS: [Color; 256] = [Color {
-    b: 0,
-    g: 0,
-    r: 0,
-    a: 0,
-}; 256];
+/// Active gamma-corrected palette in XRGB8888 format.
+/// Packing once in `I_SetPalette` lets indexed consumers load a whole color.
+static mut COLORS: [u32; 256] = [0; 256];
 
 /// Active framebuffer layout. Initialised by `I_InitGraphics`,
 /// consumed by `cmap_to_fb` / `I_FinishUpdate`. Mirrors the C file
@@ -167,7 +179,7 @@ static mut s_Fb: FB_ScreenInfo = FB_ScreenInfo {
 
 extern "C" {
     /// Platform hook called once per frame after `I_FinishUpdate` has
-    /// filled `DG_ScreenBuffer`. Implemented by the host front-end
+    /// prepared the selected output format. Implemented by the host front-end
     /// (GPU / headless / Wayland backend).
     fn DG_DrawFrame();
     /// Platform hook called from `I_SetWindowTitle` to update the
@@ -208,9 +220,9 @@ unsafe fn cmap_to_fb(out: *mut u8, inp: *mut u8, in_pixels: c_int) {
         let idx = *inp_ptr as usize;
         let c = COLORS[idx];
 
-        let pix = ((c.r as u32) << s_Fb.red.offset)
-            | ((c.g as u32) << s_Fb.green.offset)
-            | ((c.b as u32) << s_Fb.blue.offset);
+        let pix = (((c >> 16) & 0xff) << s_Fb.red.offset)
+            | (((c >> 8) & 0xff) << s_Fb.green.offset)
+            | ((c & 0xff) << s_Fb.blue.offset);
 
         for _ in 0..fb_scaling {
             (out_ptr as *mut u32).write_unaligned(pix);
@@ -236,7 +248,9 @@ unsafe fn cmap_to_rgb565(out: *mut u8, inp: *mut u8, in_pixels: c_int) {
         let idx = *inp_ptr as usize;
         let c = COLORS[idx];
 
-        let p = (((c.r as u16) & 0xF8) << 8) | (((c.g as u16) & 0xFC) << 3) | ((c.b as u16) >> 3);
+        let p = (((c >> 8) as u16) & 0xf800)
+            | (((c >> 5) as u16) & 0x07e0)
+            | (((c >> 3) as u16) & 0x001f);
 
         for _ in 0..fb_scaling {
             *out_ptr = p;
@@ -394,7 +408,7 @@ pub unsafe extern "C" fn I_UpdateNoBlit() {}
 
 /// Blit and present one frame.
 ///
-/// Converts the 320x200 palette buffer at `I_VideoBuffer` into the
+/// In framebuffer mode, converts the 320x200 buffer at `I_VideoBuffer` into the
 /// final framebuffer at `DG_ScreenBuffer`, centring it inside the
 /// configured `s_Fb.xres x s_Fb.yres` window with `x_offset` and
 /// `y_offset` padding bytes per row, repeating each Doom scanline
@@ -414,6 +428,11 @@ pub unsafe extern "C" fn I_UpdateNoBlit() {}
 /// and the framebuffer is large enough for the configured layout.
 #[no_mangle]
 pub unsafe extern "C" fn I_FinishUpdate() {
+    if OUTPUT_MODE == OutputMode::Indexed {
+        DG_DrawFrame();
+        return;
+    }
+
     let y_offset = (((s_Fb.yres as i32 - (SCREENHEIGHT as c_int * fb_scaling))
         * (s_Fb.bits_per_pixel as c_int / 8))
         / 2)
@@ -472,13 +491,13 @@ pub unsafe extern "C" fn I_ReadScreen(scr: *mut u8) {
 pub unsafe extern "C" fn I_SetPalette(palette: *mut u8) {
     let mut p = palette;
     for i in 0..256 {
-        COLORS[i].a = 0;
-        COLORS[i].r = gammatable[usegamma as usize][*p as usize];
+        let r = gammatable[usegamma as usize][*p as usize] as u32;
         p = p.add(1);
-        COLORS[i].g = gammatable[usegamma as usize][*p as usize];
+        let g = gammatable[usegamma as usize][*p as usize] as u32;
         p = p.add(1);
-        COLORS[i].b = gammatable[usegamma as usize][*p as usize];
+        let b = gammatable[usegamma as usize][*p as usize] as u32;
         p = p.add(1);
+        COLORS[i] = r << 16 | g << 8 | b;
     }
 }
 
@@ -508,12 +527,12 @@ pub unsafe extern "C" fn I_GetPaletteIndex(r: c_int, g: c_int, b: c_int) -> c_in
     // always 256 entries and the loop visits all of them.
     let mut best: c_int = 0;
     let mut best_diff: i64 = i64::MAX;
-    let colors = ptr::addr_of!(COLORS) as *const Color;
+    let colors = ptr::addr_of!(COLORS) as *const u32;
     for i in 0..256 {
         let color = colors.add(i).read();
-        let dr = r - color.r as i64;
-        let dg = g - color.g as i64;
-        let db = b - color.b as i64;
+        let dr = r - ((color >> 16) & 0xff) as i64;
+        let dg = g - ((color >> 8) & 0xff) as i64;
+        let db = b - (color & 0xff) as i64;
         let diff = dr * dr + dg * dg + db * db;
         if diff < best_diff {
             best = i as c_int;
@@ -643,97 +662,5 @@ pub unsafe extern "C" fn I_Video_Link_Anchor() {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use std::sync::{Mutex, MutexGuard};
-
-    /// `COLORS` is a `static mut` shared across the whole crate; the
-    /// tests below mutate it, so they must run serially.
-    static PALETTE_LOCK: Mutex<()> = Mutex::new(());
-
-    /// RAII guard that owns the palette lock for the duration of a
-    /// test and restores the `COLORS` snapshot captured at acquisition
-    /// time on drop, even on panic. Keeps the global palette
-    /// invisible to subsequent tests in the same binary.
-    struct PaletteGuard {
-        _lock: MutexGuard<'static, ()>,
-        saved: [Color; 256],
-    }
-
-    impl PaletteGuard {
-        fn acquire() -> Self {
-            let lock = PALETTE_LOCK.lock().unwrap_or_else(|e| e.into_inner());
-            let saved = unsafe { ptr::addr_of!(COLORS).read() };
-            Self { _lock: lock, saved }
-        }
-    }
-
-    impl Drop for PaletteGuard {
-        fn drop(&mut self) {
-            unsafe { ptr::addr_of_mut!(COLORS).write(self.saved) };
-        }
-    }
-
-    fn set_test_palette(entries: &[(u8, u8, u8)]) {
-        let colors = ptr::addr_of_mut!(COLORS) as *mut Color;
-        unsafe {
-            for i in 0..256 {
-                let (r, g, b) = entries.get(i).copied().unwrap_or((0, 0, 0));
-                colors.add(i).write(Color { b, g, r, a: 0 });
-            }
-        }
-    }
-
-    #[test]
-    fn get_palette_index_nearest_rgb() {
-        let _guard = PaletteGuard::acquire();
-        let palette: [(u8, u8, u8); 4] = [(0, 0, 0), (255, 0, 0), (0, 255, 0), (0, 0, 255)];
-        set_test_palette(&palette);
-
-        unsafe {
-            assert_eq!(I_GetPaletteIndex(0, 0, 0), 0, "exact black");
-            assert_eq!(I_GetPaletteIndex(255, 0, 0), 1, "exact red");
-            assert_eq!(I_GetPaletteIndex(0, 255, 0), 2, "exact green");
-            assert_eq!(I_GetPaletteIndex(0, 0, 255), 3, "exact blue");
-
-            assert_eq!(I_GetPaletteIndex(250, 5, 5), 1, "near red");
-            assert_eq!(I_GetPaletteIndex(5, 250, 5), 2, "near green");
-            assert_eq!(I_GetPaletteIndex(10, 10, 10), 0, "near black");
-
-            assert_eq!(
-                I_GetPaletteIndex(128, 0, 0),
-                1,
-                "128 is one step closer to 255 (diff 127^2) than to 0 (diff 128^2)"
-            );
-            assert_eq!(
-                I_GetPaletteIndex(127, 0, 0),
-                0,
-                "127 is one step closer to 0 than to 255"
-            );
-
-            // Out-of-range inputs must not overflow the diff accumulator.
-            assert_eq!(I_GetPaletteIndex(c_int::MAX, 0, 0), 1, "saturate to red");
-            assert_eq!(I_GetPaletteIndex(c_int::MIN, 0, 0), 0, "saturate to black");
-        }
-    }
-
-    #[test]
-    fn get_palette_index_returns_first_exact_match() {
-        let _guard = PaletteGuard::acquire();
-
-        // Index 42 is the target; index 200 is a duplicate. Strict
-        // `diff < best_diff` plus the outer-scope `if diff == 0
-        // { break }` together guarantee the first exact match wins
-        // and the loop terminates there; this test pins the
-        // first-match contract so regressions in either branch show
-        // up as a wrong index.
-        let mut palette: Vec<(u8, u8, u8)> = (0..256).map(|_| (200, 0, 0)).collect();
-        palette[42] = (42, 0, 0);
-        palette[200] = (42, 0, 0);
-        set_test_palette(&palette);
-
-        unsafe {
-            assert_eq!(I_GetPaletteIndex(42, 0, 0), 42);
-        }
-    }
-}
+#[path = "i_video/tests.rs"]
+mod tests;
