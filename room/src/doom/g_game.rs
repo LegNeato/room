@@ -37,6 +37,8 @@
 #![allow(non_upper_case_globals, non_snake_case, non_camel_case_types)]
 
 use crate::doom::sounds::Sfx;
+pub mod checkpoint;
+
 use std::ffi::{c_char, c_int, c_uint, c_void};
 
 use std::ptr;

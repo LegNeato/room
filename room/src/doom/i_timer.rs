@@ -94,3 +94,20 @@ pub extern "C" fn I_WaitVBL(_count: c_int) {}
 /// follows suit, leaving the function as a no-op kept for ABI parity.
 #[no_mangle]
 pub extern "C" fn I_InitTimer() {}
+
+/// Reads the clock origin without advancing the platform clock.
+///
+/// # Safety
+/// Call only while the single-threaded engine is stopped between ticks.
+pub unsafe fn clock_origin() -> u32 {
+    BASETIME
+}
+
+/// Restores the origin captured with the platform clock.
+///
+/// # Safety
+/// Call only while the engine is stopped. The platform clock must belong to
+/// the same checkpoint and must not precede this origin.
+pub unsafe fn restore_clock_origin(origin: u32) {
+    BASETIME = origin;
+}

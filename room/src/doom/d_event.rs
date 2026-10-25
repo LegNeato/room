@@ -132,6 +132,14 @@ pub extern "C" fn D_PopEvent() -> *mut event_t {
     }
 }
 
+/// Reports whether every posted input event has been consumed.
+///
+/// # Safety
+/// Call only from the single-threaded game loop between ticks.
+pub unsafe fn events_drained() -> bool {
+    EVENT_HEAD == EVENT_TAIL
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

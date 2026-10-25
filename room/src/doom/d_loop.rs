@@ -14,6 +14,8 @@
 
 #![allow(non_upper_case_globals, non_snake_case, non_camel_case_types)]
 
+pub mod checkpoint;
+
 use std::os::raw::c_int;
 
 use crate::i_error;
@@ -144,6 +146,9 @@ static mut PLAYER_CLASS: c_int = 0;
 /// Used to compute `newtics = nowtime - LASTTIME`. Corresponds to `lasttime`
 /// in `d_loop.c`.
 static mut LASTTIME: c_int = 0;
+
+/// Start time of the previous game-loop call in tics.
+static mut OLDENTERTICS: c_int = 0;
 
 /// Frame counter used by the old net-sync algorithm.
 ///
@@ -562,7 +567,6 @@ unsafe fn single_player_clear(set: *mut TiccmdSetT) {
 pub extern "C" fn TryRunTics() {
     unsafe {
         let entertic = I_GetTime() / ticdup;
-        static mut OLDENTERTICS: c_int = 0;
         let realtics = entertic - OLDENTERTICS;
         OLDENTERTICS = entertic;
 
