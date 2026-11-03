@@ -16,6 +16,10 @@
 
 #![allow(non_upper_case_globals, non_snake_case, non_camel_case_types)]
 
+mod collision;
+
+use core::simd::Simd;
+
 use std::ffi::{c_int, c_uint, c_void};
 use std::ptr;
 
@@ -248,7 +252,7 @@ pub unsafe extern "C" fn PIT_StompThing(thing: *mut mobj_t) -> c_uint {
         return 1;
     }
     let blockdist = thing.radius + (*tmthing).radius;
-    if (thing.x - tmx).wrapping_abs() >= blockdist || (thing.y - tmy).wrapping_abs() >= blockdist {
+    if !collision::things_overlap([thing.x, thing.y], [tmx, tmy], blockdist) {
         return 1;
     }
     if std::ptr::eq(thing, tmthing) {
@@ -345,11 +349,7 @@ pub unsafe extern "C" fn P_TeleportMove(thing: *mut mobj_t, x: fixed_t, y: fixed
 #[no_mangle]
 pub unsafe extern "C" fn PIT_CheckLine(ld: *mut line_t) -> c_uint {
     let ld = &*ld;
-    if tmbbox[BBox::RIGHT] <= ld.bbox[BBox::LEFT]
-        || tmbbox[BBox::LEFT] >= ld.bbox[BBox::RIGHT]
-        || tmbbox[BBox::TOP] <= ld.bbox[BBox::BOTTOM]
-        || tmbbox[BBox::BOTTOM] >= ld.bbox[BBox::TOP]
-    {
+    if !collision::boxes_overlap(tmbbox, ld.bbox) {
         return 1;
     }
     if P_BoxOnLineSide(std::ptr::addr_of_mut!(tmbbox[0]), ld as *const _ as *mut _) != -1 {
@@ -409,7 +409,7 @@ pub unsafe extern "C" fn PIT_CheckThing(thing: *mut mobj_t) -> c_uint {
         return 1;
     }
     let blockdist = thing.radius + (*tmthing).radius;
-    if (thing.x - tmx).wrapping_abs() >= blockdist || (thing.y - tmy).wrapping_abs() >= blockdist {
+    if !collision::things_overlap([thing.x, thing.y], [tmx, tmy], blockdist) {
         return 1;
     }
     if std::ptr::eq(thing, tmthing) {
@@ -737,8 +737,11 @@ pub unsafe extern "C" fn P_HitSlideLine(ld: *mut line_t) {
     let deltaangle = (deltaangle >> ANGLETOFINESHIFT) as usize;
     let movelen = P_AproxDistance(tmxmove, tmymove);
     let newlen = FixedMul(movelen, *finecosine.0.add(deltaangle));
-    tmxmove = FixedMul(newlen, *finecosine.0.add(lineangle));
-    tmymove = FixedMul(newlen, finesine[lineangle]);
+    [tmxmove, tmymove] = crate::doom::m_fixed::mul_simd(
+        Simd::splat(newlen),
+        Simd::from_array([*finecosine.0.add(lineangle), finesine[lineangle]]),
+    )
+    .to_array();
 }
 
 /// Path-traversal callback that finds blocking walls for slide movement.

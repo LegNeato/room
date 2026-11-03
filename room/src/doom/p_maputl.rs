@@ -11,6 +11,9 @@
 use std::ffi::{c_int, c_uint, c_void};
 use std::ptr;
 
+mod geometry;
+mod intercepts;
+
 use crate::doom::c_ffi::{
     divline_t, intercept_t, intercept_t_d, line_t, mobj_t, sector_t, subsector_t, MAPBLOCKSHIFT,
     MAPBLOCKSIZE, MAPBTOFRAC,
@@ -300,7 +303,7 @@ pub extern "C" fn P_InterceptVector(v2: *mut divline_t, v1: *mut divline_t) -> f
 #[no_mangle]
 pub extern "C" fn P_BoxOnLineSide(tmbox: *mut c_int, ld: *mut line_t) -> c_int {
     unsafe {
-        let tmbox = std::slice::from_raw_parts_mut(tmbox, 4);
+        let tmbox = std::slice::from_raw_parts(tmbox, 4);
         let ld = &*ld;
         let mut p1: c_int;
         let mut p2: c_int;
@@ -323,15 +326,17 @@ pub extern "C" fn P_BoxOnLineSide(tmbox: *mut c_int, ld: *mut line_t) -> c_int {
                     p2 ^= 1;
                 }
             }
-            2 => {
-                // ST_POSITIVE
-                p1 = P_PointOnLineSide(tmbox[2], tmbox[0], ld as *const _ as *mut _);
-                p2 = P_PointOnLineSide(tmbox[3], tmbox[1], ld as *const _ as *mut _);
-            }
-            _ => {
-                // ST_NEGATIVE
-                p1 = P_PointOnLineSide(tmbox[3], tmbox[0], ld as *const _ as *mut _);
-                p2 = P_PointOnLineSide(tmbox[2], tmbox[1], ld as *const _ as *mut _);
+            slope => {
+                let [left, right] = if slope == 2 {
+                    [tmbox[2], tmbox[3]]
+                } else {
+                    [tmbox[3], tmbox[2]]
+                };
+                [p1, p2] = geometry::Line {
+                    origin: [(*ld.v1).x, (*ld.v1).y],
+                    direction: [ld.dx, ld.dy],
+                }
+                .sides([[left, tmbox[0]], [right, tmbox[1]]]);
             }
         }
         if p1 == p2 {
@@ -733,32 +738,28 @@ unsafe fn InterceptsOverrun(num_intercepts: c_int, intercept: *mut intercept_t) 
 pub extern "C" fn PIT_AddLineIntercepts(ld: *mut line_t) -> c_uint {
     unsafe {
         let ld = &*ld;
-        let (s1, s2) = if trace.dx > FRACUNIT * 16
+        let [s1, s2] = if trace.dx > FRACUNIT * 16
             || trace.dy > FRACUNIT * 16
             || trace.dx < -FRACUNIT * 16
             || trace.dy < -FRACUNIT * 16
         {
-            (
-                P_PointOnDivlineSide(
-                    (*ld.v1).x,
-                    (*ld.v1).y,
-                    &raw const trace as *const _ as *mut _,
-                ),
-                P_PointOnDivlineSide(
-                    (*ld.v2).x,
-                    (*ld.v2).y,
-                    &raw const trace as *const _ as *mut _,
-                ),
-            )
+            geometry::Line {
+                origin: [trace.x, trace.y],
+                direction: [trace.dx, trace.dy],
+            }
+            .trace_sides([[(*ld.v1).x, (*ld.v1).y], [(*ld.v2).x, (*ld.v2).y]])
         } else {
-            (
-                P_PointOnLineSide(trace.x, trace.y, ld as *const _ as *mut _),
-                P_PointOnLineSide(
-                    trace.x + trace.dx,
-                    trace.y + trace.dy,
-                    ld as *const _ as *mut _,
-                ),
-            )
+            geometry::Line {
+                origin: [(*ld.v1).x, (*ld.v1).y],
+                direction: [ld.dx, ld.dy],
+            }
+            .sides([
+                [trace.x, trace.y],
+                [
+                    trace.x.wrapping_add(trace.dx),
+                    trace.y.wrapping_add(trace.dy),
+                ],
+            ])
         };
         if s1 == s2 {
             return 1;
@@ -830,8 +831,11 @@ pub extern "C" fn PIT_AddThingIntercepts(thing: *mut mobj_t) -> c_uint {
                 thing.y + thing.radius,
             )
         };
-        let s1 = P_PointOnDivlineSide(x1, y1, &raw const trace as *const _ as *mut _);
-        let s2 = P_PointOnDivlineSide(x2, y2, &raw const trace as *const _ as *mut _);
+        let [s1, s2] = geometry::Line {
+            origin: [trace.x, trace.y],
+            direction: [trace.dx, trace.dy],
+        }
+        .trace_sides([[x1, y1], [x2, y2]]);
         if s1 == s2 {
             return 1;
         }
@@ -889,16 +893,17 @@ pub extern "C" fn P_TraverseIntercepts(
             intercept_p.offset_from(std::ptr::addr_of_mut!(intercepts[0])) as c_int
         };
         for _ in 0..count {
-            let mut dist = c_int::MAX;
-            let mut in_ptr: *mut intercept_t = ptr::null_mut();
-            let mut scan = std::ptr::addr_of_mut!(intercepts[0]);
-            while scan < intercept_p {
-                if (*scan).frac < dist {
-                    dist = (*scan).frac;
-                    in_ptr = scan;
-                }
-                scan = scan.offset(1);
-            }
+            // End the shared borrow before invoking a callback that can change records.
+            let Some(index) = intercepts::nearest(core::slice::from_raw_parts(
+                core::ptr::addr_of!(intercepts).cast::<intercept_t>(),
+                count as usize,
+            )) else {
+                return 1;
+            };
+            let in_ptr = core::ptr::addr_of_mut!(intercepts)
+                .cast::<intercept_t>()
+                .add(index);
+            let dist = (*in_ptr).frac;
             if dist > maxfrac {
                 return 1;
             }

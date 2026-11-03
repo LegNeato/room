@@ -66,7 +66,8 @@ room/
 
 ## Prerequisites
 
-- A Rust toolchain (stable, ≥ 1.75).
+- The nightly Rust toolchain pinned in `rust-toolchain.toml`. The engine uses
+  `core::simd` for rendering, collision tests, and fixed-point physics.
 - A C compiler (`gcc` or `clang`).
 - A Doom WAD file (`doom1.wad`, `doom.wad`, `doom2.wad`, `freedoom1.wad`, …).
   The shareware episode is freely available from many sources.
@@ -76,6 +77,12 @@ room/
 ```bash
 cargo build --release
 ```
+
+The column and span renderers process 32 pixels per vector. Masked loads and
+stores handle short draws. Collision tests and physics use independent lanes
+without changing callback order or fixed-point rounding. Builds that include
+the engine modules through `room-source` must enable `#![feature(portable_simd)]`
+in the consuming crate.
 
 ## Running
 

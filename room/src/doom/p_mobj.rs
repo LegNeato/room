@@ -5,6 +5,8 @@
 
 #![allow(non_upper_case_globals, non_snake_case, non_camel_case_types)]
 
+use core::simd::{cmp::SimdOrd, Simd};
+
 use crate::doom::sounds::Sfx;
 use crate::i_error;
 use std::ffi::c_void;
@@ -219,8 +221,9 @@ pub unsafe extern "C" fn P_XYMovement(mo: *mut mobj_t) {
         return;
     }
 
-    mo.momx = mo.momx.clamp(-MAXMOVE, MAXMOVE);
-    mo.momy = mo.momy.clamp(-MAXMOVE, MAXMOVE);
+    [mo.momx, mo.momy] = Simd::from_array([mo.momx, mo.momy])
+        .simd_clamp(Simd::splat(-MAXMOVE), Simd::splat(MAXMOVE))
+        .to_array();
 
     xmove = mo.momx;
     ymove = mo.momy;
@@ -306,8 +309,11 @@ pub unsafe extern "C" fn P_XYMovement(mo: *mut mobj_t) {
         mo.momx = 0;
         mo.momy = 0;
     } else {
-        mo.momx = FixedMul(mo.momx, FRICTION);
-        mo.momy = FixedMul(mo.momy, FRICTION);
+        [mo.momx, mo.momy] = crate::doom::m_fixed::mul_simd(
+            Simd::from_array([mo.momx, mo.momy]),
+            Simd::splat(FRICTION),
+        )
+        .to_array();
     }
 }
 

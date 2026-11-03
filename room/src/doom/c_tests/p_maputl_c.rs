@@ -15,6 +15,8 @@ use crate::doom::m_bbox::BBox;
 use crate::doom::m_fixed::FRACUNIT;
 use crate::doom::p_maputl;
 
+mod simd;
+
 // ---------------------------------------------------------------------------
 // P_AproxDistance
 // ---------------------------------------------------------------------------

@@ -5,6 +5,7 @@
 
 #![allow(non_camel_case_types, non_snake_case)]
 
+use core::simd::{num::SimdInt, Simd};
 use std::ffi::c_int;
 
 /// `fixed_t` — matches `typedef int fixed_t;` in m_fixed.h.
@@ -50,9 +51,42 @@ pub extern "C" fn FixedDiv(a: fixed_t, b: fixed_t) -> fixed_t {
     }
 }
 
+/// Multiplies independent 16.16 components with the same rounding as `FixedMul`.
+#[inline]
+pub(crate) fn mul_simd<const N: usize>(
+    a: Simd<fixed_t, N>,
+    b: Simd<fixed_t, N>,
+) -> Simd<fixed_t, N> {
+    ((a.cast::<i64>() * b.cast::<i64>()) >> i64::from(FRACBITS)).cast()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn paired_multiplication_matches_scalar_at_integer_limits() {
+        let values = [
+            i32::MIN,
+            i32::MIN + 1,
+            -65537,
+            -65536,
+            -1,
+            0,
+            1,
+            65535,
+            65536,
+            i32::MAX,
+        ];
+        for a in values {
+            for b in values {
+                assert_eq!(
+                    mul_simd(Simd::from_array([a, b]), Simd::from_array([b, a])).to_array(),
+                    [FixedMul(a, b), FixedMul(b, a)]
+                );
+            }
+        }
+    }
 
     /// `1.0 * 1.0 == 1.0` in 16.16.
     #[test]
