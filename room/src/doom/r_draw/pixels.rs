@@ -23,7 +23,7 @@ pub(super) struct Column {
 }
 
 impl Column {
-    /// Draws one column or its two low-detail copies.
+    /// Draws a column into each destination.
     ///
     /// # Safety
     /// For a nonempty column, each selected texture byte and each of the 256 colormap entries must be
@@ -36,7 +36,6 @@ impl Column {
         destinations: [*mut u8; COPIES],
         stride: usize,
     ) {
-        const { assert!(COPIES == 1 || COPIES == 2) };
         let mut fraction =
             Simd::splat(self.fraction as u32) + OFFSETS * Simd::splat(self.step as u32);
         let advance = Simd::splat((self.step as u32).wrapping_mul(LANES as u32));
@@ -74,12 +73,12 @@ impl Span {
     /// # Safety
     /// For a nonempty span, `source` must contain 4096 readable bytes and
     /// `colormap` must contain 256.
-    /// `destination` must have `count * COPIES` writable bytes. The output must
-    /// not overlap either input. `COPIES` must be 1 or 2 and `count` must fit in
-    /// `u32`.
+    /// `destination` must have `count` writable bytes, or twice that when
+    /// `DOUBLE` is true. The output must not overlap either input. `count` must
+    /// fit in `u32`.
     #[inline]
-    pub(super) unsafe fn draw<const COPIES: usize>(self, destination: *mut u8) {
-        const { assert!(COPIES == 1 || COPIES == 2) };
+    pub(super) unsafe fn draw<const DOUBLE: bool>(self, destination: *mut u8) {
+        let copies = if DOUBLE { 2 } else { 1 };
         let mut position = Simd::splat(self.position) + OFFSETS * Simd::splat(self.step);
         let advance = Simd::splat(self.step.wrapping_mul(LANES as u32));
         for start in (0..self.count).step_by(LANES) {
@@ -93,8 +92,8 @@ impl Span {
             let texels = unsafe { Simd::gather_select_ptr(source, enabled, Simd::splat(0)) };
             let colors = Simd::splat(self.colormap).wrapping_add(texels.cast::<usize>());
             let pixels = unsafe { Simd::gather_select_ptr(colors, enabled, Simd::splat(0)) };
-            let offsets = (OFFSETS.cast::<usize>() + Simd::splat(start)) * Simd::splat(COPIES);
-            for copy in 0..COPIES {
+            let offsets = (OFFSETS.cast::<usize>() + Simd::splat(start)) * Simd::splat(copies);
+            for copy in 0..copies {
                 let pointers = Simd::splat(destination).wrapping_add(offsets + Simd::splat(copy));
                 unsafe { pixels.scatter_select_ptr(pointers, enabled) };
             }

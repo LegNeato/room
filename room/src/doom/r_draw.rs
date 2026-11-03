@@ -614,7 +614,7 @@ pub extern "C" fn R_DrawSpan() {
             source: ds_source,
             colormap: ds_colormap,
         }
-        .draw::<1>(destination);
+        .draw::<false>(destination);
     }
 }
 
@@ -658,7 +658,7 @@ pub extern "C" fn R_DrawSpanLow() {
             source: ds_source,
             colormap: ds_colormap,
         }
-        .draw::<2>(destination);
+        .draw::<true>(destination);
     }
 }
 

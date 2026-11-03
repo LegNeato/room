@@ -103,7 +103,8 @@ mod columns {
 mod spans {
     use super::*;
 
-    fn compare<const COPIES: usize>(count: usize, mut position: u32, step: u32) {
+    fn compare<const DOUBLE: bool>(count: usize, mut position: u32, step: u32) {
+        let copies = if DOUBLE { 2 } else { 1 };
         let source: [u8; 4096] = core::array::from_fn(|index| (index as u8).wrapping_mul(41));
         let colors = colormap();
         let mut actual = vec![SENTINEL; 642];
@@ -116,12 +117,12 @@ mod spans {
                 source: source.as_ptr(),
                 colormap: colors.as_ptr(),
             }
-            .draw::<COPIES>(actual.as_mut_ptr().add(1));
+            .draw::<DOUBLE>(actual.as_mut_ptr().add(1));
         }
         for column in 0..count {
             let sample = ((position >> 26) | ((position >> 4) & 0xfc0)) as usize;
-            for copy in 0..COPIES {
-                expected[1 + column * COPIES + copy] = colors[source[sample] as usize];
+            for copy in 0..copies {
+                expected[1 + column * copies + copy] = colors[source[sample] as usize];
             }
             position = position.wrapping_add(step);
         }
@@ -138,8 +139,8 @@ mod spans {
                 (u32::MAX, u32::MAX),
                 (0x8765_4321, 0xffff_0001),
             ] {
-                compare::<1>(count, position, step);
-                compare::<2>(count, position, step);
+                compare::<false>(count, position, step);
+                compare::<true>(count, position, step);
             }
         }
     }
@@ -154,7 +155,7 @@ mod spans {
                 source: core::ptr::null(),
                 colormap: core::ptr::null(),
             }
-            .draw::<2>(core::ptr::null_mut());
+            .draw::<true>(core::ptr::null_mut());
         }
     }
 }
