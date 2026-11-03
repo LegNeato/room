@@ -135,7 +135,7 @@ mod tests {
     /// `sequence_len` is set to the string length so the
     /// short-sequence-on-parameter-cheat guard does not fire.
     fn make_cheat(seq: &str, param_chars: c_int) -> cheatseq_t {
-        let mut sequence = [0i8; MAX_CHEAT_LEN];
+        let mut sequence = [0 as c_char; MAX_CHEAT_LEN];
         let bytes = seq.as_bytes();
         for (i, &b) in bytes.iter().enumerate() {
             sequence[i] = b as c_char;
@@ -212,7 +212,7 @@ mod tests {
         }
         cht_CheckCheat(&mut cheat, b'7' as c_char); // completes the cheat
 
-        let mut param_buf = [0i8; MAX_CHEAT_PARAMS];
+        let mut param_buf = [0 as c_char; MAX_CHEAT_PARAMS];
         cht_GetParam(&mut cheat, param_buf.as_mut_ptr());
         assert_eq!(param_buf[0], b'7' as c_char);
     }

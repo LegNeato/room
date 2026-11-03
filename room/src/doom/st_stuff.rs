@@ -308,7 +308,7 @@ unsafe fn logical_gamemission() -> c_int {
 ///
 /// Used at compile time to initialise cheat-sequence buffers inside `cheatseq_t`.
 const fn make_cheat_seq(seq: &[u8]) -> [c_char; 25] {
-    let mut arr = [0i8; 25];
+    let mut arr = [0 as c_char; 25];
     let mut i = 0;
     while i < seq.len() {
         arr[i] = seq[i] as c_char;
@@ -638,7 +638,7 @@ pub unsafe extern "C" fn ST_Responder(ev: *mut event_t) -> c_int {
                 }
                 (*plyr).message = DEH_String(STSTR_KFAADDED);
             } else if cht_CheckCheat(&raw mut cheat_mus, ev.data2 as c_char) != 0 {
-                let mut buf = [0i8; 3];
+                let mut buf = [0 as c_char; 3];
                 let musnum: c_int;
                 (*plyr).message = DEH_String(STSTR_MUS);
                 cht_GetParam(&raw mut cheat_mus, buf.as_mut_ptr());
@@ -714,7 +714,7 @@ pub unsafe extern "C" fn ST_Responder(ev: *mut event_t) -> c_int {
         }
 
         if netgame == 0 && cht_CheckCheat(&raw mut cheat_clev, ev.data2 as c_char) != 0 {
-            let mut buf = [0i8; 3];
+            let mut buf = [0 as c_char; 3];
             let mut epsd: c_int;
             let map: c_int;
             cht_GetParam(&raw mut cheat_clev, buf.as_mut_ptr());
@@ -1229,7 +1229,7 @@ type LoadCallback = unsafe extern "C" fn(*mut c_char, *mut *mut patch_t);
 /// reads/writes the single patch slot supplied. The WAD subsystem must be
 /// initialised before the load variant is invoked.
 unsafe fn ST_loadUnloadGraphics(callback: LoadCallback) {
-    let mut namebuf = [0i8; 9];
+    let mut namebuf = [0 as c_char; 9];
 
     for i in 0..10i32 {
         c_write!(namebuf, "STTNUM{}", i);

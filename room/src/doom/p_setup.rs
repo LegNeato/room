@@ -1252,7 +1252,7 @@ pub extern "C" fn P_SetupLevel(episode: c_int, map: c_int, _playermask: c_int, _
         P_InitThinkers();
 
         // Find map name.
-        let mut lumpname = [0i8; 9];
+        let mut lumpname = [0 as c_char; 9];
         if gamemode == d_mode::commercial {
             if map < 10 {
                 let s = format!("map0{}", map);
@@ -1262,10 +1262,10 @@ pub extern "C" fn P_SetupLevel(episode: c_int, map: c_int, _playermask: c_int, _
                 ptr::copy_nonoverlapping(s.as_ptr(), lumpname.as_mut_ptr() as *mut u8, s.len());
             }
         } else {
-            lumpname[0] = b'E' as i8;
-            lumpname[1] = (b'0' + episode as u8) as i8;
-            lumpname[2] = b'M' as i8;
-            lumpname[3] = (b'0' + map as u8) as i8;
+            lumpname[0] = b'E' as c_char;
+            lumpname[1] = (b'0' + episode as u8) as c_char;
+            lumpname[2] = b'M' as c_char;
+            lumpname[3] = (b'0' + map as u8) as c_char;
             lumpname[4] = 0;
         }
 

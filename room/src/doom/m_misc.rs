@@ -973,7 +973,7 @@ mod tests {
     /// `len == 0`: the clamp returns `0` without writing anywhere.
     #[test]
     fn test_snprintf_clamp_zero_len() {
-        let mut buf = [0i8; 16];
+        let mut buf = [0 as c_char; 16];
         let r = m_snprintf_clamp(buf.as_mut_ptr(), 0, 5);
         assert_eq!(r, 0);
     }
@@ -982,7 +982,7 @@ mod tests {
     #[test]
     fn test_snprintf_clamp_no_truncation() {
         // result < len: the value is returned unchanged.
-        let mut buf = [0i8; 16];
+        let mut buf = [0 as c_char; 16];
         let r = m_snprintf_clamp(buf.as_mut_ptr(), buf.len(), 5);
         assert_eq!(r, 5);
     }
@@ -992,7 +992,7 @@ mod tests {
     #[test]
     fn test_snprintf_clamp_exact_fit() {
         // result == len - 1: no truncation, value returned unchanged.
-        let mut buf = [0i8; 16];
+        let mut buf = [0 as c_char; 16];
         let r = m_snprintf_clamp(buf.as_mut_ptr(), buf.len(), (buf.len() - 1) as c_int);
         assert_eq!(r, (buf.len() - 1) as c_int);
     }
@@ -1002,7 +1002,7 @@ mod tests {
     #[test]
     fn test_snprintf_clamp_truncation() {
         // result >= len: buffer is null-terminated at len-1, clamped value returned.
-        let mut buf: Vec<i8> = b"ABCDEFGHIJKLMNOP".iter().map(|&b| b as i8).collect();
+        let mut buf: Vec<c_char> = b"ABCDEFGHIJKLMNOP".iter().map(|&b| b as c_char).collect();
         let len = buf.len();
         let r = m_snprintf_clamp(buf.as_mut_ptr(), len, len as c_int);
         assert_eq!(r, (len - 1) as c_int);
@@ -1014,7 +1014,7 @@ mod tests {
     #[test]
     fn test_snprintf_clamp_error_result() {
         // result < 0 (encoding error): buffer is null-terminated at len-1, clamped.
-        let mut buf = [b'X' as i8; 8];
+        let mut buf = [b'X' as c_char; 8];
         let len = buf.len();
         let r = m_snprintf_clamp(buf.as_mut_ptr(), len, -1);
         assert_eq!(r, (len - 1) as c_int);
@@ -1031,9 +1031,9 @@ mod tests {
     #[test]
     fn test_snprintf_clamp_does_not_substitute_format_args() {
         let fmt = b"say %s\0";
-        let mut buf = [0i8; 32];
+        let mut buf = [0 as c_char; 32];
         buf[..fmt.len()].copy_from_slice(unsafe {
-            std::slice::from_raw_parts(fmt.as_ptr() as *const i8, fmt.len())
+            std::slice::from_raw_parts(fmt.as_ptr() as *const c_char, fmt.len())
         });
         // Call m_snprintf_clamp without first calling snprintf.
         let r = m_snprintf_clamp(buf.as_mut_ptr(), buf.len(), (fmt.len() - 1) as c_int);
@@ -1051,7 +1051,7 @@ mod tests {
     /// m_snprintf_clamp to clamp and null-terminate the result.
     #[test]
     fn test_snprintf_then_clamp_substitutes_format_args() {
-        let mut buf = [0i8; 32];
+        let mut buf = [0 as c_char; 32];
         let result = unsafe {
             libc::snprintf(
                 buf.as_mut_ptr(),

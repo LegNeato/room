@@ -101,7 +101,7 @@ const fn mi(
     routine: Option<extern "C" fn(c_int)>,
     alpha: u8,
 ) -> menuitem_t {
-    let mut n = [0i8; 10];
+    let mut n = [0 as c_char; 10];
     let mut i = 0;
     while i < name.len() && i < 10 {
         n[i] = name[i] as c_char;
@@ -120,7 +120,7 @@ const fn mi(
 /// Used to initialise the `gammamsg` table without heap allocation.
 const fn make_gamma_msg(s: &str) -> [c_char; 26] {
     let bytes = s.as_bytes();
-    let mut arr = [0i8; 26];
+    let mut arr = [0 as c_char; 26];
     let mut i = 0;
     while i < bytes.len() {
         arr[i] = bytes[i] as c_char;

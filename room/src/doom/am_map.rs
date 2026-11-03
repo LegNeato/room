@@ -793,7 +793,7 @@ pub static mut cheat_amap: cheatseq_t = cheatseq_t {
 ///
 /// Used to initialise [`cheat_amap`]'s `sequence` field in a `const` context.
 const fn make_cheat_seq(seq: &[u8]) -> [c_char; 25] {
-    let mut arr = [0i8; 25];
+    let mut arr = [0 as c_char; 25];
     let mut i = 0;
     while i < seq.len() {
         arr[i] = seq[i] as c_char;

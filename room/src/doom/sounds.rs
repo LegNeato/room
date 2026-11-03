@@ -706,7 +706,7 @@ impl MusicInfo {
 const fn name<const N: usize>(s: &str) -> [c_char; N] {
     let b = s.as_bytes();
     assert!(b.len() < N, "String is too long for the array");
-    let mut a = [0i8; N];
+    let mut a = [0 as c_char; N];
     let mut i = 0;
     while i < b.len() {
         a[i] = b[i] as c_char;

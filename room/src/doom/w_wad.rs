@@ -673,7 +673,7 @@ mod tests {
     /// Build a `[c_char; 8]` lump name from a byte slice, NUL-padding
     /// or truncating to 8 bytes.
     fn make_lump_name(s: &[u8]) -> [c_char; 8] {
-        let mut name = [0i8; 8];
+        let mut name = [0 as c_char; 8];
         for (i, &b) in s.iter().take(8).enumerate() {
             name[i] = b as c_char;
         }
