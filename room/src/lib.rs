@@ -33,6 +33,7 @@
 //!   minimal; many arrays are `static mut` and would otherwise need
 //!   `slice::from_raw_parts` wrappers.
 
+#![feature(portable_simd)]
 // TODO: Add `# Safety` documentation to all unsafe functions.
 #![allow(clippy::missing_safety_doc)]
 // This crate is a C-to-Rust port. Many symbols are defined for FFI completeness

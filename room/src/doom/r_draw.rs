@@ -9,6 +9,8 @@
 use std::ffi::{c_char, c_int, c_void};
 use std::ptr;
 
+mod pixels;
+
 use crate::doom::c_ffi::{FUZZOFF, FUZZTABLE, SBARHEIGHT};
 use crate::doom::d_mode::commercial;
 use crate::doom::doomstat::gamemode;
@@ -245,24 +247,15 @@ pub extern "C" fn R_DrawColumn() {
             dc_x as c_int
         );
 
-        // Framebuffer destination address.
-        let mut dest = ylookup[dc_yl as usize].add(columnofs[dc_x as usize] as usize);
-
-        // Determine scaling, which is the only mapping to be done.
-        let fracstep = dc_iscale;
-        let mut frac = dc_texturemid + (dc_yl - centery) * fracstep;
-
-        // Inner loop that does the actual texture mapping.
-        let mut count = count;
-        loop {
-            *dest = *dc_colormap.add(*dc_source.add(((frac >> FRACBITS) & 127) as usize) as usize);
-            dest = dest.add(SCREENWIDTH as usize);
-            frac += fracstep;
-            if count == 0 {
-                break;
-            }
-            count -= 1;
+        let destination = ylookup[dc_yl as usize].add(columnofs[dc_x as usize] as usize);
+        pixels::Column {
+            count: count as usize + 1,
+            fraction: dc_texturemid.wrapping_add((dc_yl - centery).wrapping_mul(dc_iscale)),
+            step: dc_iscale,
+            source: dc_source,
+            colormap: dc_colormap,
         }
+        .draw([destination], SCREENWIDTH as usize);
     }
 }
 
@@ -291,33 +284,28 @@ pub extern "C" fn R_DrawColumnLow() {
         let x = dc_x << 1;
 
         debug_assert!(
-            (dc_x as u32) < (SCREENWIDTH as u32) && dc_yl >= 0 && dc_yh < SCREENHEIGHT,
+            (x as u32) + 1 < (SCREENWIDTH as u32) && dc_yl >= 0 && dc_yh < SCREENHEIGHT,
             "R_DrawColumnLow: {} to {} at {}",
             dc_yl as c_int,
             dc_yh as c_int,
             dc_x as c_int
         );
 
-        let mut dest = ylookup[dc_yl as usize].add(columnofs[x as usize] as usize);
-        let mut dest2 = ylookup[dc_yl as usize].add(columnofs[(x + 1) as usize] as usize);
-
-        let fracstep = dc_iscale;
-        let mut frac = dc_texturemid + (dc_yl - centery) * fracstep;
-
-        let mut count = count;
-        loop {
-            let pix =
-                *dc_colormap.add(*dc_source.add(((frac >> FRACBITS) & 127) as usize) as usize);
-            *dest = pix;
-            *dest2 = pix;
-            dest = dest.add(SCREENWIDTH as usize);
-            dest2 = dest2.add(SCREENWIDTH as usize);
-            frac += fracstep;
-            if count == 0 {
-                break;
-            }
-            count -= 1;
+        let row = ylookup[dc_yl as usize];
+        pixels::Column {
+            count: count as usize + 1,
+            fraction: dc_texturemid.wrapping_add((dc_yl - centery).wrapping_mul(dc_iscale)),
+            step: dc_iscale,
+            source: dc_source,
+            colormap: dc_colormap,
         }
+        .draw(
+            [
+                row.add(columnofs[x as usize] as usize),
+                row.add(columnofs[(x + 1) as usize] as usize),
+            ],
+            SCREENWIDTH as usize,
+        );
     }
 }
 
@@ -601,52 +589,32 @@ pub extern "C" fn R_InitTranslationTables() {
 /// to avoid separate fixed-point additions.
 ///
 /// Writes pixels to `screens[0]` from column `ds_x1` to `ds_x2` inclusive on row `ds_y`.
-/// Does not check for zero-length spans; the caller must ensure `ds_x2 >= ds_x1`.
+/// Does nothing if `ds_x2 < ds_x1`.
 #[no_mangle]
 pub extern "C" fn R_DrawSpan() {
     unsafe {
-        let mut position: u32;
-
-        // Pack position and step variables into a single 32-bit integer,
-        // with x in the top 16 bits and y in the bottom 16 bits.  For
-        // each 16-bit part, the top 6 bits are the integer part and the
-        // bottom 10 bits are the fractional part of the pixel position.
-        position = ((ds_xfrac << 10) as u32 & 0xffff0000) | ((ds_yfrac >> 6) as u32 & 0x0000ffff);
-        let step: u32 =
-            ((ds_xstep << 10) as u32 & 0xffff0000) | ((ds_ystep >> 6) as u32 & 0x0000ffff);
-
-        let mut dest = ylookup[ds_y as usize].add(columnofs[ds_x1 as usize] as usize);
-
-        // We do not check for zero spans here?
-        let mut count = ds_x2 - ds_x1;
-
+        if ds_x2 < ds_x1 {
+            return;
+        }
         debug_assert!(
-            ds_x2 >= ds_x1
-                && ds_x1 >= 0
-                && ds_x2 < SCREENWIDTH
-                && (ds_y as u32) <= (SCREENHEIGHT as u32),
+            ds_x1 >= 0 && ds_x2 < SCREENWIDTH / 1 && ds_y >= 0 && ds_y < SCREENHEIGHT,
             "R_DrawSpan: {} to {} at {}",
             ds_x1 as c_int,
             ds_x2 as c_int,
             ds_y as c_int
         );
-
-        loop {
-            // Calculate current texture index in u,v.
-            let ytemp = ((position >> 4) & 0x0fc0) as usize;
-            let xtemp = (position >> 26) as usize;
-            let spot = xtemp | ytemp;
-
-            // Lookup pixel from flat texture tile, re-index using light/colormap.
-            *dest = *ds_colormap.add(*ds_source.add(spot) as usize);
-            dest = dest.add(1);
-
-            position = position.wrapping_add(step);
-            if count == 0 {
-                break;
-            }
-            count -= 1;
+        let position =
+            ((ds_xfrac as u32) << 10 & 0xffff0000) | ((ds_yfrac as u32) >> 6 & 0x0000ffff);
+        let step = ((ds_xstep as u32) << 10 & 0xffff0000) | ((ds_ystep as u32) >> 6 & 0x0000ffff);
+        let destination = ylookup[ds_y as usize].add(columnofs[(ds_x1 * 1) as usize] as usize);
+        pixels::Span {
+            count: (ds_x2 - ds_x1) as usize + 1,
+            position,
+            step,
+            source: ds_source,
+            colormap: ds_colormap,
         }
+        .draw::<1>(destination);
     }
 }
 
@@ -669,49 +637,28 @@ pub extern "C" fn R_DrawSpan() {
 #[no_mangle]
 pub extern "C" fn R_DrawSpanLow() {
     unsafe {
-        let mut position: u32;
-
-        position = ((ds_xfrac << 10) as u32 & 0xffff0000) | ((ds_yfrac >> 6) as u32 & 0x0000ffff);
-        let step: u32 =
-            ((ds_xstep << 10) as u32 & 0xffff0000) | ((ds_ystep >> 6) as u32 & 0x0000ffff);
-
-        let mut count = ds_x2 - ds_x1;
-
-        // Blocky mode, need to multiply by 2.
-        let ds_x1_low = ds_x1 << 1;
-
+        if ds_x2 < ds_x1 {
+            return;
+        }
         debug_assert!(
-            ds_x2 >= ds_x1
-                && ds_x1 >= 0
-                && ds_x2 < SCREENWIDTH
-                && (ds_y as u32) <= (SCREENHEIGHT as u32),
+            ds_x1 >= 0 && ds_x2 < SCREENWIDTH / 2 && ds_y >= 0 && ds_y < SCREENHEIGHT,
             "R_DrawSpanLow: {} to {} at {}",
             ds_x1 as c_int,
             ds_x2 as c_int,
             ds_y as c_int
         );
-
-        let mut dest = ylookup[ds_y as usize].add(columnofs[ds_x1_low as usize] as usize);
-
-        loop {
-            let ytemp = ((position >> 4) & 0x0fc0) as usize;
-            let xtemp = (position >> 26) as usize;
-            let spot = xtemp | ytemp;
-
-            // Lowres/blocky mode does it twice,
-            // while scale is adjusted appropriately.
-            let pix = *ds_colormap.add(*ds_source.add(spot) as usize);
-            *dest = pix;
-            dest = dest.add(1);
-            *dest = pix;
-            dest = dest.add(1);
-
-            position = position.wrapping_add(step);
-            if count == 0 {
-                break;
-            }
-            count -= 1;
+        let position =
+            ((ds_xfrac as u32) << 10 & 0xffff0000) | ((ds_yfrac as u32) >> 6 & 0x0000ffff);
+        let step = ((ds_xstep as u32) << 10 & 0xffff0000) | ((ds_ystep as u32) >> 6 & 0x0000ffff);
+        let destination = ylookup[ds_y as usize].add(columnofs[(ds_x1 * 2) as usize] as usize);
+        pixels::Span {
+            count: (ds_x2 - ds_x1) as usize + 1,
+            position,
+            step,
+            source: ds_source,
+            colormap: ds_colormap,
         }
+        .draw::<2>(destination);
     }
 }
 
@@ -950,6 +897,20 @@ mod tests {
 
     /// Serialises all tests that touch the shared mutable renderer globals.
     static LOCK: Mutex<()> = Mutex::new(());
+
+    #[test]
+    fn empty_spans_do_not_use_framebuffer_coordinates() {
+        let _guard = LOCK.lock().unwrap();
+        unsafe {
+            let saved = (ds_y, ds_x1, ds_x2);
+            ds_y = -1;
+            ds_x1 = -1;
+            ds_x2 = -2;
+            R_DrawSpan();
+            R_DrawSpanLow();
+            (ds_y, ds_x1, ds_x2) = saved;
+        }
+    }
 
     // -----------------------------------------------------------------------
     // R_InitBuffer

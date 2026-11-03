@@ -16,6 +16,9 @@
 
 use std::cell::Cell;
 
+#[cfg(test)]
+mod tests;
+
 thread_local! {
     /// Virtual wall-clock in milliseconds for the current thread, advanced
     /// only by explicit calls to [`bump_virtual_ms`].
