@@ -853,6 +853,27 @@ pub unsafe extern "C" fn R_ExecuteSetViewSize() {
     }
 
     detailshift = setdetail;
+    configure_view(false);
+}
+
+/// Arena rasters fill their own origin and never reserve a menu/status-bar border.
+pub(super) unsafe fn arena_viewport(viewport: super::arena::Viewport, half_angle: angle_t) {
+    if viewport == super::arena::Viewport::NATIVE {
+        R_SetViewSize(11, 0);
+        R_ExecuteSetViewSize();
+    } else {
+        setsizeneeded = Boolean::FALSE;
+        scaledviewwidth = i32::from(viewport.width());
+        viewheight = i32::from(viewport.height());
+        detailshift = 0;
+        configure_view(true);
+    }
+    // Pixel quantization of xtoviewangle must not change the physical frustum
+    // or the player observation filter when a viewer changes resolution.
+    clipangle = half_angle;
+}
+
+unsafe fn configure_view(arena_origin: bool) {
     viewwidth = scaledviewwidth >> detailshift;
 
     centery = viewheight / 2;
@@ -875,7 +896,11 @@ pub unsafe extern "C" fn R_ExecuteSetViewSize() {
         spanfunc = Some(R_DrawSpanLow);
     }
 
-    R_InitBuffer(scaledviewwidth, viewheight);
+    if arena_origin {
+        super::r_draw::init_view_buffer(scaledviewwidth, viewheight, 0, 0);
+    } else {
+        R_InitBuffer(scaledviewwidth, viewheight);
+    }
     R_InitTextureMapping();
 
     // psprite scales

@@ -161,6 +161,8 @@ pub enum Error {
     State,
     #[error("the arena reached Doom's tic counter limit")]
     TickLimit,
+    #[error("the arena viewport must be a bounded native-aspect raster")]
+    Viewport,
 }
 
 #[cfg(test)]

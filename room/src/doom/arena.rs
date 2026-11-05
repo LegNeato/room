@@ -5,12 +5,24 @@
 
 mod map;
 mod types;
+mod viewport;
 
 pub use types::{Buttons, Command, Config, Error, Player, PlayerState, Snapshot};
+pub use viewport::Viewport;
 
 use super::{d_loop, d_main, d_net, d_player, g_game, m_random, p_tick};
 
 static mut CONFIG: Option<Config> = None;
+static mut VIEWPORT: Viewport = Viewport::NATIVE;
+static mut NATIVE_CLIP_ANGLE: u32 = 0;
+
+/// The current raster in the native-stride framebuffer.
+///
+/// # Safety
+/// The caller holds the active arena's exclusive static image.
+pub unsafe fn viewport() -> Viewport {
+    VIEWPORT
+}
 
 /// Local driver state saved with the matching world and player graph.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -82,6 +94,8 @@ pub unsafe fn start(config: Config) -> Result<Snapshot, Error> {
     d_main::wipegamestate = g_game::gamestate;
     super::r_main::R_SetViewSize(11, 0);
     super::r_main::R_ExecuteSetViewSize();
+    VIEWPORT = Viewport::NATIVE;
+    NATIVE_CLIP_ANGLE = super::r_main::clipangle;
     snapshot()
 }
 
@@ -192,12 +206,24 @@ unsafe fn player_state(player: Player) -> Result<PlayerState, Error> {
 /// # Safety
 /// The caller must hold exclusive initialized engine access with graphics ready.
 pub unsafe fn render(player: Player) -> Result<(), Error> {
+    render_at(player, Viewport::NATIVE)
+}
+
+/// Draws a requested native-aspect raster without changing the world or camera.
+///
+/// # Safety
+/// The caller holds exclusive initialized engine access with graphics ready.
+pub unsafe fn render_at(player: Player, viewport: Viewport) -> Result<(), Error> {
     boundary()?;
     let player = std::ptr::addr_of_mut!(g_game::players)
         .cast::<d_player::PlayerT>()
         .add(player.index());
     if (*player).mo.is_null() {
         return Err(Error::State);
+    }
+    if viewport != VIEWPORT {
+        super::r_main::arena_viewport(viewport, NATIVE_CLIP_ANGLE);
+        VIEWPORT = viewport;
     }
     super::r_main::R_RenderPlayerView(player);
     let palette = super::w_wad::W_CacheLumpName(c"PLAYPAL".as_ptr(), super::z_zone::PU_CACHE);

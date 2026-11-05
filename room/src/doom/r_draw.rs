@@ -678,25 +678,25 @@ pub extern "C" fn R_DrawSpanLow() {
 #[no_mangle]
 pub extern "C" fn R_InitBuffer(width: c_int, height: c_int) {
     unsafe {
-        // Handle resize, e.g. smaller view windows with border and/or status bar.
-        viewwindowx = (SCREENWIDTH - width) >> 1;
-
-        // Column offset. For windows.
-        for i in 0..width {
-            columnofs[i as usize] = viewwindowx + i;
-        }
-
-        // Same with base row offset.
-        if width == SCREENWIDTH {
-            viewwindowy = 0;
+        let x = (SCREENWIDTH - width) >> 1;
+        let y = if width == SCREENWIDTH {
+            0
         } else {
-            viewwindowy = (SCREENHEIGHT - SBARHEIGHT - height) >> 1;
-        }
+            (SCREENHEIGHT - SBARHEIGHT - height) >> 1
+        };
+        init_view_buffer(width, height, x, y);
+    }
+}
 
-        // Precalculate all row offsets.
-        for i in 0..height {
-            ylookup[i as usize] = I_VideoBuffer.add(((i + viewwindowy) * SCREENWIDTH) as usize);
-        }
+/// The caller supplies a validated rectangle contained in the native framebuffer.
+pub(super) unsafe fn init_view_buffer(width: c_int, height: c_int, x: c_int, y: c_int) {
+    viewwindowx = x;
+    viewwindowy = y;
+    for i in 0..width {
+        columnofs[i as usize] = x + i;
+    }
+    for i in 0..height {
+        ylookup[i as usize] = I_VideoBuffer.add(((i + y) * SCREENWIDTH) as usize);
     }
 }
 
