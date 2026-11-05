@@ -322,29 +322,16 @@ pub unsafe extern "C" fn EV_DoLockedDoor(
         return 0;
     };
 
-    match (*line).special as c_int {
-        99 | 133 => {
-            if p.cards[it_bluecard] == 0 && p.cards[it_blueskull] == 0 {
-                p.message = locked_object_message((*line).special as c_int);
-                S_StartSound(std::ptr::null_mut(), Sfx::Oof as c_int);
-                return 0;
-            }
-        }
-        134 | 135 => {
-            if p.cards[it_redcard] == 0 && p.cards[it_redskull] == 0 {
-                p.message = locked_object_message((*line).special as c_int);
-                S_StartSound(std::ptr::null_mut(), Sfx::Oof as c_int);
-                return 0;
-            }
-        }
-        136 | 137 => {
-            if p.cards[it_yellowcard] == 0 && p.cards[it_yellowskull] == 0 {
-                p.message = locked_object_message((*line).special as c_int);
-                S_StartSound(std::ptr::null_mut(), Sfx::Oof as c_int);
-                return 0;
-            }
-        }
-        _ => {}
+    let missing_key = match (*line).special as c_int {
+        99 | 133 => p.cards[it_bluecard] == 0 && p.cards[it_blueskull] == 0,
+        134 | 135 => p.cards[it_redcard] == 0 && p.cards[it_redskull] == 0,
+        136 | 137 => p.cards[it_yellowcard] == 0 && p.cards[it_yellowskull] == 0,
+        _ => false,
+    };
+    if missing_key {
+        p.message = locked_object_message((*line).special as c_int);
+        S_StartSound(std::ptr::null_mut(), Sfx::Oof as c_int);
+        return 0;
     }
 
     EV_DoDoor(line, r#type)

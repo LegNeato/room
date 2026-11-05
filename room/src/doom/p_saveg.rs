@@ -441,6 +441,7 @@ unsafe fn saveg_write_thinker_t(th: *const thinker_t) {
 ///   `player->mo` is updated in place.
 /// - `info` is a raw saved pointer (will be overwritten by caller with
 ///   `&mobjinfo[type]`).
+///
 /// C origin: `saveg_read_mobj_t`.
 unsafe fn saveg_read_mobj_t(mobj: *mut c_void) {
     let mo: *mut crate::doom::c_ffi::mobj_t = mobj as *mut crate::doom::c_ffi::mobj_t;
@@ -752,6 +753,7 @@ unsafe fn saveg_write_pspdef_t(psp: *const PspdefT) {
 /// - `message` and `attacker` are raw pointers; callers zero them after read.
 /// - Each of `NUMPSPRITES` player-sprite slots is read via
 ///   `saveg_read_pspdef_t`.
+///
 /// C origin: `saveg_read_player_t`.
 unsafe fn saveg_read_player_t(pl: *mut PlayerT) {
     let s = &mut *pl;
@@ -1236,7 +1238,7 @@ pub unsafe extern "C" fn P_TempSaveGameFile() -> *mut c_char {
         let bytes = full.into_bytes();
         let ptr = std::alloc::alloc(std::alloc::Layout::from_size_align(bytes.len(), 1).unwrap())
             as *mut c_char;
-        ptr::copy_nonoverlapping(bytes.as_ptr(), ptr as *mut u8, bytes.len());
+        ptr::copy_nonoverlapping(bytes.as_ptr(), ptr.cast::<u8>(), bytes.len());
         TEMP_SAVE_FILENAME = ptr;
     }
     TEMP_SAVE_FILENAME
@@ -1270,7 +1272,7 @@ pub unsafe extern "C" fn P_SaveGameFile(slot: c_int) -> *mut c_char {
     }
 
     let dir_str = std::ffi::CStr::from_ptr(savegamedir).to_str().unwrap();
-    let buf = std::slice::from_raw_parts_mut(SAVE_FILENAME as *mut u8, alloc_size);
+    let buf = std::slice::from_raw_parts_mut(SAVE_FILENAME.cast::<u8>(), alloc_size);
     fill_save_filename(buf, dir_str, slot);
 
     SAVE_FILENAME

@@ -353,8 +353,8 @@ unsafe fn R_InitSpriteDefs(namelist: *mut *mut c_char) {
         for l in (start + 1)..end {
             let li = &*lumpinfo.add(l as usize);
             if strncasecmp(li.name.as_ptr(), spritename, 4) == 0 {
-                let frame = (li.name[4] as u8 - b'A') as u32;
-                let rotation = (li.name[5] as u8 - b'0') as u32;
+                let frame = (u8::from_ne_bytes(li.name[4].to_ne_bytes()) - b'A') as u32;
+                let rotation = (u8::from_ne_bytes(li.name[5].to_ne_bytes()) - b'0') as u32;
 
                 let patched = if modifiedgame.is_truthy() {
                     // Need a null-terminated copy for W_GetNumForName
@@ -368,8 +368,8 @@ unsafe fn R_InitSpriteDefs(namelist: *mut *mut c_char) {
                 R_InstallSpriteLump(patched, frame, rotation, 0);
 
                 if li.name[6] != 0 {
-                    let frame = (li.name[6] as u8 - b'A') as u32;
-                    let rotation = (li.name[7] as u8 - b'0') as u32;
+                    let frame = (u8::from_ne_bytes(li.name[6].to_ne_bytes()) - b'A') as u32;
+                    let rotation = (u8::from_ne_bytes(li.name[7].to_ne_bytes()) - b'0') as u32;
                     R_InstallSpriteLump(l, frame, rotation, 1);
                 }
             }

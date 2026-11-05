@@ -1256,10 +1256,10 @@ pub extern "C" fn P_SetupLevel(episode: c_int, map: c_int, _playermask: c_int, _
         if gamemode == d_mode::commercial {
             if map < 10 {
                 let s = format!("map0{}", map);
-                ptr::copy_nonoverlapping(s.as_ptr(), lumpname.as_mut_ptr() as *mut u8, s.len());
+                ptr::copy_nonoverlapping(s.as_ptr(), lumpname.as_mut_ptr().cast::<u8>(), s.len());
             } else {
                 let s = format!("map{}", map);
-                ptr::copy_nonoverlapping(s.as_ptr(), lumpname.as_mut_ptr() as *mut u8, s.len());
+                ptr::copy_nonoverlapping(s.as_ptr(), lumpname.as_mut_ptr().cast::<u8>(), s.len());
             }
         } else {
             lumpname[0] = b'E' as c_char;

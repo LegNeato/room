@@ -274,7 +274,7 @@ pub extern "C" fn HUlib_drawTextLine(l: *mut hu_textline_t, drawcursor: c_int) {
         let sc = (*l).sc;
 
         for i in 0..(*l).len as usize {
-            let c = ((*l).l[i] as u8).to_ascii_uppercase();
+            let c = u8::from_ne_bytes((*l).l[i].to_ne_bytes()).to_ascii_uppercase();
             if c != b' ' && c >= sc as u8 && c <= b'_' {
                 let patch = *f.add((c as c_int - sc) as usize);
                 let w = short_swap((*patch).width) as c_int;

@@ -20,7 +20,7 @@ use crate::types::Boolean;
 
 /// Opaque stand-in for libc's `FILE *`. Pointers are passed through to the
 /// `extern "C"` shims below; the contents are never accessed from Rust.
-pub enum FILE {}
+pub use libc::FILE;
 
 /// Unix directory separator character (C: `DIR_SEPARATOR = '/'`).
 const DIR_SEPARATOR: c_char = b'/' as c_char;

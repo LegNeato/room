@@ -597,7 +597,7 @@ pub extern "C" fn R_DrawSpan() {
             return;
         }
         debug_assert!(
-            ds_x1 >= 0 && ds_x2 < SCREENWIDTH / 1 && ds_y >= 0 && ds_y < SCREENHEIGHT,
+            ds_x1 >= 0 && ds_x2 < SCREENWIDTH && ds_y >= 0 && ds_y < SCREENHEIGHT,
             "R_DrawSpan: {} to {} at {}",
             ds_x1 as c_int,
             ds_x2 as c_int,
@@ -606,7 +606,7 @@ pub extern "C" fn R_DrawSpan() {
         let position =
             ((ds_xfrac as u32) << 10 & 0xffff0000) | ((ds_yfrac as u32) >> 6 & 0x0000ffff);
         let step = ((ds_xstep as u32) << 10 & 0xffff0000) | ((ds_ystep as u32) >> 6 & 0x0000ffff);
-        let destination = ylookup[ds_y as usize].add(columnofs[(ds_x1 * 1) as usize] as usize);
+        let destination = ylookup[ds_y as usize].add(columnofs[ds_x1 as usize] as usize);
         pixels::Span {
             count: (ds_x2 - ds_x1) as usize + 1,
             position,

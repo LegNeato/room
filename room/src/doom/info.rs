@@ -73,6 +73,7 @@
 //! values *must* match the C enums member-for-member because every entry
 //! in `mobjinfo`, `states`, and `sprnames` is initialised by integer index
 //! - any drift silently re-targets every cross-table reference. The tests
+//!
 //! at the bottom of the file (`mt_enum_matches_c_header`,
 //! `mf_flags_match_c_header`, `mobjinfo_spawnstate_sprite_cross_reference`,
 //! `mobjinfo_respawn_flags_consistent`) lock the indices and flag bits

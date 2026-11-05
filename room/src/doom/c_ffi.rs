@@ -6,6 +6,8 @@
 //! before porting each module.
 
 #![allow(non_snake_case, non_camel_case_types, non_upper_case_globals)]
+// The compatibility facade also serves consumers that compile only part of Room.
+#![allow(unused_imports)]
 
 use std::ffi::{c_int, c_short, c_uint, c_ushort, c_void};
 

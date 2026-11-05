@@ -4,12 +4,12 @@ const MAP_THING_BYTES: usize = 10;
 const MAX_THINGS_BYTES: usize = 1024 * 1024;
 
 fn starts(bytes: &[u8]) -> Result<(), Error> {
-    if bytes.len() > MAX_THINGS_BYTES || bytes.len() % MAP_THING_BYTES != 0 {
+    if bytes.len() > MAX_THINGS_BYTES || !bytes.len().is_multiple_of(MAP_THING_BYTES) {
         return Err(Error::Map);
     }
     let mut players = [false; 2];
     let mut deathmatch = 0;
-    for thing in bytes.chunks_exact(MAP_THING_BYTES) {
+    for thing in bytes.as_chunks::<MAP_THING_BYTES>().0 {
         match u16::from_le_bytes([thing[6], thing[7]]) {
             1 => players[0] = true,
             2 => players[1] = true,
@@ -29,7 +29,12 @@ pub(super) unsafe fn validate() -> Result<(), Error> {
     let things = u32::try_from(marker).ok().and_then(|v| v.checked_add(1));
     let things = things.filter(|v| *v < w_wad::numlumps).ok_or(Error::Map)?;
     let info = &*w_wad::lumpinfo.add(things as usize);
-    if info.name.map(|v| v as u8) != *b"THINGS\0\0" {
+    if !info
+        .name
+        .iter()
+        .zip(b"THINGS\0\0")
+        .all(|(found, wanted)| i32::from(*found) == i32::from(*wanted))
+    {
         return Err(Error::Map);
     }
     let length = usize::try_from(w_wad::W_LumpLength(things)).map_err(|_| Error::Map)?;

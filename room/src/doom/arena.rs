@@ -24,7 +24,7 @@ pub struct State {
 /// # Safety
 /// The caller must hold exclusive access to the engine's static image.
 pub unsafe fn config() -> Option<Config> {
-    CONFIG
+    std::ptr::addr_of!(CONFIG).read()
 }
 
 pub(super) unsafe fn clear() {
@@ -86,7 +86,7 @@ pub unsafe fn start(config: Config) -> Result<Snapshot, Error> {
 }
 
 unsafe fn boundary() -> Result<d_loop::checkpoint::Boundary, Error> {
-    if CONFIG.is_none()
+    if config().is_none()
         || g_game::netgame != 1
         || g_game::deathmatch != 1
         || g_game::playeringame != [1, 1, 0, 0]
@@ -233,7 +233,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn scoreboard_subtracts_suicides_and_monster_deaths() {
+    fn scoreboard_subtracts_native_self_frags() {
         assert_eq!(frag_sum([2, 5, 0, 0], 0), 3);
         assert_eq!(frag_sum([1, 3, 0, 0], 1), -2);
         assert_eq!(frag_sum([1, 3, 99, 99], 1), -2);

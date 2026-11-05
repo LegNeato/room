@@ -3076,7 +3076,16 @@ pub unsafe extern "C" fn G_CheckDemoStatus() -> boolean {
 mod tests {
     #[test]
     fn respawn_angles_use_the_fine_angle_table() {
-        for (angle, expected) in [(0, 0), (45, 1024), (90, 2048), (135, 3072), (180, 4096), (225, 5120), (270, 6144), (315, 7168)] {
+        for (angle, expected) in [
+            (0, 0),
+            (45, 1024),
+            (90, 2048),
+            (135, 3072),
+            (180, 4096),
+            (225, 5120),
+            (270, 6144),
+            (315, 7168),
+        ] {
             assert_eq!(super::respawn_angle(angle), expected);
         }
     }

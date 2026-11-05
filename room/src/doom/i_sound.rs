@@ -90,8 +90,8 @@ pub static mut snd_musiccmd: *mut c_char = unsafe { std::ptr::addr_of_mut!(EMPTY
 /// calls below use byte-string literals while passing the same memory
 /// as a C-char slice. The signedness reinterpretation is sound
 /// because the byte values are pure ASCII.
-const fn c_bytes(s: &[u8]) -> &'static [c_char] {
-    unsafe { &*(s as *const [u8] as *const [c_char]) }
+const fn c_bytes(s: &'static [u8]) -> &'static [c_char] {
+    unsafe { std::slice::from_raw_parts(s.as_ptr().cast::<c_char>(), s.len()) }
 }
 
 /// Initialise the audio subsystem.
@@ -418,8 +418,8 @@ pub extern "C" fn I_PlaySong(handle: *mut c_void, looping: c_int) {
     let music_handle = unsafe { &*(handle as *const MusicHandle) };
     crate::audio::AUDIO.with_borrow_mut(|audio| {
         if let Some(a) = audio.as_mut() {
-            let mixer = a.mixer.clone();
-            a.music.play(&music_handle.midi_bytes, looping != 0, &mixer);
+            a.music
+                .play(&music_handle.midi_bytes, looping != 0, &a.mixer);
         }
     });
 }
