@@ -1,4 +1,4 @@
-use std::{fmt, ops::BitOr};
+use std::ops::BitOr;
 
 /// One of the two players in a local arena.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -145,32 +145,23 @@ pub struct Snapshot {
     pub players: [PlayerState; 2],
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
 pub enum Error {
+    #[error("the arena has only players zero and one")]
     Player,
+    #[error("the command contains a non-gameplay button")]
     Buttons,
+    #[error("movement must be between -50 and 50")]
     Movement,
+    #[error("arena skill must be between zero and three")]
     Skill,
+    #[error("E1M1 needs two player starts and at least four deathmatch starts")]
     Map,
+    #[error("the arena is not at a completed local tic")]
     State,
+    #[error("the arena reached Doom's tic counter limit")]
     TickLimit,
 }
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(match self {
-            Self::Player => "the arena has only players zero and one",
-            Self::Buttons => "the command contains a non-gameplay button",
-            Self::Movement => "movement must be between -50 and 50",
-            Self::Skill => "arena skill must be between zero and three",
-            Self::Map => "E1M1 needs two player starts and at least four deathmatch starts",
-            Self::State => "the arena is not at a completed local tic",
-            Self::TickLimit => "the arena reached Doom's tic counter limit",
-        })
-    }
-}
-
-impl std::error::Error for Error {}
 
 #[cfg(test)]
 mod tests {

@@ -1997,6 +1997,7 @@ dependencies = [
  "pollster",
  "rodio",
  "rustysynth",
+ "thiserror 2.0.18",
  "wgpu",
  "winit",
 ]
