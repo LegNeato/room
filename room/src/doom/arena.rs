@@ -54,9 +54,9 @@ pub unsafe fn start(config: Config) -> Result<Snapshot, Error> {
     g_game::playeringame = [1, 1, 0, 0];
     g_game::consoleplayer = 0;
     g_game::displayplayer = 0;
-    g_game::nomonsters = 0;
-    g_game::respawnparm = 0;
-    g_game::fastparm = 0;
+    d_main::nomonsters = 0;
+    d_main::respawnparm = 0;
+    d_main::fastparm = 0;
     g_game::consistancy = [[0; 128]; 4];
     g_game::bodyque = [std::ptr::null_mut(); 32];
     // Reset native per-player counters before G_PlayerReborn preserves them.
@@ -151,6 +151,7 @@ pub unsafe fn snapshot() -> Result<Snapshot, Error> {
 
 fn frag_sum(row: [i32; 4], player: usize) -> i64 {
     row.into_iter()
+        .take(2)
         .enumerate()
         .map(|(index, frags)| {
             if index == player {
@@ -235,6 +236,7 @@ mod tests {
     fn scoreboard_subtracts_suicides_and_monster_deaths() {
         assert_eq!(frag_sum([2, 5, 0, 0], 0), 3);
         assert_eq!(frag_sum([1, 3, 0, 0], 1), -2);
+        assert_eq!(frag_sum([1, 3, 99, 99], 1), -2);
         assert_eq!(frag_sum([i32::MIN, i32::MAX, 0, 0], 0), 4_294_967_295);
     }
 }
