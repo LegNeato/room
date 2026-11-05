@@ -16,6 +16,7 @@
 //! it ports and what it does; see the individual files for details.
 
 pub mod am_map;
+pub mod arena;
 pub mod c_ffi;
 
 pub mod d_event;

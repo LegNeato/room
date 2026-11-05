@@ -1948,6 +1948,10 @@ pub unsafe extern "C" fn G_ScreenShot() {
 /// `#[no_mangle]` for C callers.
 #[no_mangle]
 pub unsafe extern "C" fn G_ExitLevel() {
+    // Local deathmatch arenas keep the map and its frag counters until reset.
+    if crate::doom::arena::config().is_some() {
+        return;
+    }
     secretexit = 0;
     gameaction = ga_completed;
 }
@@ -1963,6 +1967,9 @@ pub unsafe extern "C" fn G_ExitLevel() {
 /// `#[no_mangle]` for C callers.
 #[no_mangle]
 pub unsafe extern "C" fn G_SecretExitLevel() {
+    if crate::doom::arena::config().is_some() {
+        return;
+    }
     if gamemode == commercial && W_CheckNumForName(c"map31".as_ptr()) < 0 {
         secretexit = 0;
     } else {
@@ -2343,6 +2350,7 @@ pub unsafe extern "C" fn G_DeferedInitNew(skill: skill_t, episode: c_int, map: c
 /// Mutates many engine globals. Exported as `#[no_mangle]` for C callers.
 #[no_mangle]
 pub unsafe extern "C" fn G_DoNewGame() {
+    crate::doom::arena::clear();
     demoplayback = 0;
     netdemo = 0;
     netgame = 0;
@@ -2412,6 +2420,7 @@ pub unsafe extern "C" fn G_InitNew(skill: skill_t, episode: c_int, map: c_int) {
     }
 
     M_ClearRandom();
+    crate::doom::arena::seed_random();
 
     if skill == 4 || respawnparm != 0 {
         // sk_nightmare = 4
