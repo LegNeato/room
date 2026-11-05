@@ -16,7 +16,7 @@ static mut CONFIG: Option<Config> = None;
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct State {
     pub config: Config,
-    pub consistency: [[u8; 128]; 4],
+    pub consistency: [[u8; d_loop::BACKUPTICS]; d_player::MAXPLAYERS],
 }
 
 /// Reads the configuration selected for this engine image.
@@ -57,7 +57,7 @@ pub unsafe fn start(config: Config) -> Result<Snapshot, Error> {
     d_main::nomonsters = 0;
     d_main::respawnparm = 0;
     d_main::fastparm = 0;
-    g_game::consistancy = [[0; 128]; 4];
+    g_game::consistancy = [[0; d_loop::BACKUPTICS]; d_player::MAXPLAYERS];
     g_game::bodyque = [std::ptr::null_mut(); 32];
     // Reset native per-player counters before G_PlayerReborn preserves them.
     for index in 0..2 {
@@ -124,7 +124,7 @@ pub unsafe fn step(commands: [Command; 2]) -> Result<Snapshot, Error> {
         Command::default().raw(),
         Command::default().raw(),
     ];
-    let slot = boundary.tick as usize % 128;
+    let slot = boundary.tick as usize % d_loop::BACKUPTICS;
     for (index, command) in raw.iter_mut().enumerate().take(2) {
         // Both commands are local. Doom's ring still advances exactly as usual.
         command.consistancy = g_game::consistancy[index][slot];

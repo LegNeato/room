@@ -112,7 +112,13 @@ The engine runs inside the winit event loop:
 
 - **No mouse support.**  Mouse aiming / strafing are not yet implemented.
 - **No joystick support.**
-- **Single player only.**  Networking (`FEATURE_MULTIPLAYER`) is not compiled in.
+- **No network multiplayer.** The desktop game uses the single-player loop.
+  Embedded callers can use `doom::arena` for a local two-player deathmatch world
+  with monsters. Both commands advance one shared world at 35 Hz. The caller
+  chooses one player view and provides the score UI. E1M1 exits are disabled
+  until an explicit reset. Each arena needs exclusive engine access or an
+  isolated static image. The driver checkpoint must travel with the complete
+  world and both player states; it is not a standalone save game.
 - The renderer performs a nearest-neighbour upscale from the native 640 × 400
   resolution to the window size; the window is currently fixed at 640 × 400.
 
