@@ -84,6 +84,8 @@ const MAXDRAWSEGS: usize = 256;
 
 use crate::doom::r_bsp::{backsector, curline, drawsegs, ds_p, frontsector, linedef, sidedef};
 use crate::doom::r_data::{textureheight, texturetranslation, R_GetColumn};
+#[cfg(feature = "rangecheck")]
+use crate::doom::r_draw::viewwidth;
 use crate::doom::r_draw::{
     dc_colormap, dc_iscale, dc_source, dc_texturemid, dc_x, dc_yh, dc_yl, viewheight,
 };
