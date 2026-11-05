@@ -1783,8 +1783,8 @@ pub unsafe extern "C" fn G_CheckSpot(playernum: c_int, mthing: *mut mapthing_t) 
     // Spawn teleport fog
     let ss = R_PointInSubsector(x, y);
 
-    // Replicate vanilla signed-angle overflow (from PrBoom+)
-    let an_raw = (0x10000000i32).wrapping_mul((*mthing).angle as i32 / 45);
+    // Shift before multiplying, as in doomgeneric's defined overflow emulation.
+    let an_raw = respawn_angle((*mthing).angle);
     let xa: fixed_t;
     let ya: fixed_t;
     match an_raw {
@@ -1820,6 +1820,11 @@ pub unsafe extern "C" fn G_CheckSpot(playernum: c_int, mthing: *mut mapthing_t) 
         S_StartSound(mo as *mut c_void, Sfx::Telept as c_int);
     }
     1
+}
+
+fn respawn_angle(angle: i16) -> i32 {
+    let fine_angle = crate::doom::tables::ANG45 >> crate::doom::tables::ANGLETOFINESHIFT;
+    fine_angle as i32 * (i32::from(angle) / 45)
 }
 
 // ---------------------------------------------------------------------------
@@ -3069,6 +3074,12 @@ pub unsafe extern "C" fn G_CheckDemoStatus() -> boolean {
 /// `DEMOMARKER` end-of-stream shortcut.
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn respawn_angles_use_the_fine_angle_table() {
+        for (angle, expected) in [(0, 0), (45, 1024), (90, 2048), (135, 3072), (180, 4096), (225, 5120), (270, 6144), (315, 7168)] {
+            assert_eq!(super::respawn_angle(angle), expected);
+        }
+    }
     use super::*;
     use crate::doom::d_mode::exe_doom_1_9;
     use crate::doom::d_player::TiccmdT;
