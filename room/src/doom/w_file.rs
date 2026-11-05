@@ -62,7 +62,7 @@ struct stdc_wad_file_t {
     fstream: *mut FILE,
 }
 
-use crate::doom::m_misc::{M_FileLength, FILE as MiscFILE};
+use crate::doom::m_misc::M_FileLength;
 use crate::doom::z_zone::{Z_Free, Z_Malloc, PU_STATIC};
 
 /// Stdio-backed `OpenFile` implementation. Opens `path` for reading in
@@ -94,7 +94,7 @@ unsafe extern "C" fn W_StdC_OpenFile(path: *mut c_char) -> *mut wad_file_t {
 
     (*result).wad.file_class = std::ptr::addr_of_mut!(stdc_wad_file);
     (*result).wad.mapped = ptr::null_mut();
-    (*result).wad.length = M_FileLength(fstream as *mut MiscFILE) as c_uint;
+    (*result).wad.length = M_FileLength(fstream) as c_uint;
     (*result).fstream = fstream;
 
     &mut (*result).wad
