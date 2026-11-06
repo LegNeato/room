@@ -49,6 +49,7 @@ use crate::doom::d_mode::{
 };
 use crate::doom::d_player::{PlayerT, TiccmdT, MAXPLAYERS};
 use crate::doom::doomstat::{gamemission, gamemode, gameversion};
+use crate::doom::info::MT_TFOG;
 use crate::doom::m_random::P_Random;
 use crate::doom::p_inter::maxammo;
 use crate::doom::p_setup::{
@@ -193,8 +194,6 @@ const DEMOMARKER: byte = 0x80;
 const VERSIONSIZE: usize = 16;
 /// Ammo-type index for the clip (bullets) ammo class.
 const am_clip: usize = 0;
-/// `MT_TFOG` mobj type index - teleport fog spawned at player respawn spots.
-const MT_TFOG: c_int = 28;
 
 /// Default starting health (100); patched by Dehacked in vanilla.
 const DEH_INITIAL_HEALTH: c_int = 100;
@@ -1814,7 +1813,11 @@ pub unsafe extern "C" fn G_CheckSpot(playernum: c_int, mthing: *mut mapthing_t) 
     }
 
     let floorheight = (*(*ss).sector).floorheight;
-    let mo = P_SpawnMobj(x + 20 * xa, y + 20 * ya, floorheight, MT_TFOG);
+    // The emulated tangent-table cases can overflow a fixed-point offset;
+    // preserve the original 32-bit wrap in checked builds as well.
+    let fog_x = x.wrapping_add(20_i32.wrapping_mul(xa));
+    let fog_y = y.wrapping_add(20_i32.wrapping_mul(ya));
+    let mo = P_SpawnMobj(fog_x, fog_y, floorheight, MT_TFOG);
 
     if players[consoleplayer as usize].viewz != 1 {
         S_StartSound(mo as *mut c_void, Sfx::Telept as c_int);
@@ -3067,6 +3070,9 @@ pub unsafe extern "C" fn G_CheckDemoStatus() -> boolean {
 // ---------------------------------------------------------------------------
 // Unit tests
 // ---------------------------------------------------------------------------
+
+#[cfg(test)]
+mod respawn_tests;
 
 /// Unit-test suite covering ticcmd checksumming, demo I/O byte layout and
 /// version-code lookup. The demo tests exercise `read_demo_ticcmd_inner`
