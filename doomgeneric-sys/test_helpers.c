@@ -11,6 +11,12 @@ int room_test_get_doom_191_version(void) {
 // state_t layout
 int room_test_get_state_t_sizeof(void)      { return (int)sizeof(state_t); }
 int room_test_get_state_t_tics_offset(void) { return (int)offsetof(state_t, tics); }
+int room_test_get_state_t_action_offset(void) { return (int)offsetof(state_t, action); }
+int room_test_get_actionf_t_sizeof(void) { return (int)sizeof(actionf_t); }
+int room_test_get_actionf_t_alignof(void) {
+    struct aligned_action { char prefix; actionf_t action; };
+    return (int)offsetof(struct aligned_action, action);
+}
 
 // mobjinfo_t layout
 int room_test_get_mobjinfo_t_sizeof(void)        { return (int)sizeof(mobjinfo_t); }

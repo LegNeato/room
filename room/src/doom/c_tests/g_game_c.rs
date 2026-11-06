@@ -299,6 +299,20 @@ fn state_t_tics_offset_matches_c() {
     );
 }
 
+#[test]
+fn typed_state_action_layout_matches_c() {
+    use crate::doom::info::{Action, State};
+    assert_eq!(std::mem::size_of::<Action>() as i32, unsafe {
+        doomgeneric_sys::room_test_get_actionf_t_sizeof()
+    },);
+    assert_eq!(std::mem::align_of::<Action>() as i32, unsafe {
+        doomgeneric_sys::room_test_get_actionf_t_alignof()
+    },);
+    assert_eq!(std::mem::offset_of!(State, action) as i32, unsafe {
+        doomgeneric_sys::room_test_get_state_t_action_offset()
+    },);
+}
+
 /// mobjinfo_t size must match between C compiler and the Rust `MobjInfo` repr.
 #[test]
 fn mobjinfo_t_sizeof_matches_c() {

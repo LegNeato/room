@@ -95,6 +95,12 @@ extern "C" {
     pub fn room_test_get_state_t_sizeof() -> c_int;
     /// `offsetof(state_t, tics)` as the C compiler sees it.
     pub fn room_test_get_state_t_tics_offset() -> c_int;
+    /// `offsetof(state_t, action)` as the C compiler sees it.
+    pub fn room_test_get_state_t_action_offset() -> c_int;
+    /// `sizeof(actionf_t)` as the C compiler sees it.
+    pub fn room_test_get_actionf_t_sizeof() -> c_int;
+    /// Natural alignment of the C action function union.
+    pub fn room_test_get_actionf_t_alignof() -> c_int;
 
     /// `sizeof(mobjinfo_t)` as the C compiler sees it.
     pub fn room_test_get_mobjinfo_t_sizeof() -> c_int;

@@ -115,8 +115,9 @@ pub static mut bulletslope: fixed_t = 0;
 /// # Safety
 ///
 /// `player` must be a valid, non-null pointer to an initialised `PlayerT`.
-/// `position` must be in `0..NUMPSPRITES`.  `stnum` must be a valid state
-/// index or `S_NULL` (0).
+/// `position` must be in `0..NUMPSPRITES`. `stnum` must belong to a
+/// weapon/flash state graph (or be `S_NULL`). Every
+/// non-null callback in that graph must retain its two-parameter signature.
 #[no_mangle]
 pub unsafe extern "C" fn P_SetPsprite(player: *mut PlayerT, position: c_int, stnum: c_int) {
     let psp = (*player).psprites.as_mut_ptr().add(position as usize);
@@ -137,10 +138,8 @@ pub unsafe extern "C" fn P_SetPsprite(player: *mut PlayerT, position: c_int, stn
             (*psp).sy = (*state).misc2 << FRACBITS;
         }
 
-        // Call action routine.
-        if let Some(action) = (*state).action {
-            let action: unsafe extern "C" fn(*mut PlayerT, *mut PspdefT) =
-                std::mem::transmute(action);
+        // Weapon/flash graphs contain weapon callbacks or null actions only.
+        if let Some(action) = (*state).action.weapon() {
             action(player, psp);
             if (*psp).state.is_null() {
                 break;

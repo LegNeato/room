@@ -136,7 +136,8 @@ fn is_sentinel(f: actionf_t) -> bool {
 /// # Safety
 ///
 /// `mobj` must be a valid, non-null pointer to an initialised `mobj_t`.
-/// `state` must be a valid state-table index or `S_NULL`.
+/// `state` must be a valid actor-state index or `S_NULL`. Every non-null
+/// callback in that state graph must retain its actor signature.
 #[no_mangle]
 pub unsafe extern "C" fn P_SetMobjState(mobj: *mut mobj_t, state: c_int) -> c_int {
     let mobj = &mut *mobj;
@@ -152,9 +153,9 @@ pub unsafe extern "C" fn P_SetMobjState(mobj: *mut mobj_t, state: c_int) -> c_in
         mobj.tics = (*st).tics;
         mobj.sprite = (*st).sprite;
         mobj.frame = (*st).frame;
-        if let Some(action) = (*st).action {
-            let action: unsafe extern "C" fn(*mut c_void) = core::mem::transmute(action);
-            action(mobj as *mut mobj_t as *mut c_void);
+        // Actor graphs contain actor callbacks or null actions only.
+        if let Some(action) = (*st).action.actor() {
+            action(mobj as *mut mobj_t);
         }
         state = (*st).nextstate;
         if mobj.tics != 0 {
