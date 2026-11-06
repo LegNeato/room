@@ -379,6 +379,7 @@ unsafe fn R_InitSpriteDefs(namelist: *mut *mut c_char) {
         if maxframe == -1 {
             let spr = &mut *(sprites as *mut spritedef_t).add(i as usize);
             spr.numframes = 0;
+            spr.spriteframes = ptr::null_mut();
             continue;
         }
 
@@ -676,12 +677,14 @@ pub unsafe extern "C" fn R_ProjectSprite(thing: *mut c_void) {
     }
 
     let sprdef = &*(sprites as *mut spritedef_t).add((*thing).sprite as usize);
+    // The sprite table includes names from other IWADs. Missing definitions
+    // have no frame storage in every build, not only range-checked builds.
+    if sprdef.numframes == 0 {
+        return;
+    }
     #[cfg(feature = "rangecheck")]
     {
         if ((*thing).frame & FF_FRAMEMASK) >= sprdef.numframes {
-            if sprdef.numframes == 0 {
-                return; // sprite lump not present in this WAD — skip silently
-            }
             i_error!(
                 "R_ProjectSprite [THING]: invalid sprite frame {} : {}",
                 (*thing).sprite,
@@ -1269,3 +1272,6 @@ pub unsafe extern "C" fn R_Things_Link_Anchor() {
     let _ = R_DrawSprite as *const () as usize;
     let _ = R_DrawMasked as *const () as usize;
 }
+
+#[cfg(test)]
+mod tests;
