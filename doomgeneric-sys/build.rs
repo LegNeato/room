@@ -31,6 +31,7 @@ fn main() {
 
     // Emit cargo rerun-if-changed directives so the build is incremental.
     println!("cargo:rerun-if-changed=../vendor/doomgeneric");
+    println!("cargo:rerun-if-changed=test_helpers.c");
 
     // The complete set of C source files to compile, matching the
     // doomgeneric Makefile (minus the platform-specific files).
