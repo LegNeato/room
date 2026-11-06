@@ -283,7 +283,9 @@ unsafe fn CheckDirectoryHasIWAD(dir: *mut c_char, iwadname: *mut c_char) -> *mut
         M_StringJoinA(strs.as_ptr())
     };
 
-    printf(c"Trying IWAD file:%s\n".as_ptr(), filename);
+    super::startup::info(|| {
+        printf(c"Trying IWAD file:%s\n".as_ptr(), filename);
+    });
 
     if M_FileExists(filename) != 0 {
         return filename;
@@ -476,7 +478,9 @@ pub unsafe extern "C" fn D_FindIWAD(mask: c_int, mission: *mut c_int) -> *mut c_
         *mission = IdentifyIWADByName(result, mask);
         result
     } else {
-        printf(c"-iwad not specified, trying a few iwad names\n".as_ptr());
+        super::startup::info(|| {
+            printf(c"-iwad not specified, trying a few iwad names\n".as_ptr());
+        });
 
         let mut result: *mut c_char = ptr::null_mut();
 

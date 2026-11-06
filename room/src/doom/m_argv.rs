@@ -113,7 +113,9 @@ unsafe fn LoadResponseFile(argv_index: c_int) {
         return;
     }
 
-    printf(c"Found response file %s!\n".as_ptr(), response_filename);
+    super::startup::info(|| {
+        printf(c"Found response file %s!\n".as_ptr(), response_filename);
+    });
 
     let size: c_long = M_FileLength(handle as *mut MiscFILE);
 

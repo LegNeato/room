@@ -967,19 +967,31 @@ unsafe fn configure_view(arena_origin: bool) {
 #[no_mangle]
 pub unsafe extern "C" fn R_Init() {
     R_InitData();
-    libc::printf(c".".as_ptr());
+    super::startup::info(|| {
+        libc::printf(c".".as_ptr());
+    });
     R_InitPointToAngle();
-    libc::printf(c".".as_ptr());
+    super::startup::info(|| {
+        libc::printf(c".".as_ptr());
+    });
     R_InitTables();
-    libc::printf(c".".as_ptr());
+    super::startup::info(|| {
+        libc::printf(c".".as_ptr());
+    });
     R_SetViewSize(screenblocks, detailLevel);
     R_InitPlanes();
-    libc::printf(c".".as_ptr());
+    super::startup::info(|| {
+        libc::printf(c".".as_ptr());
+    });
     R_InitLightTables();
-    libc::printf(c".".as_ptr());
+    super::startup::info(|| {
+        libc::printf(c".".as_ptr());
+    });
     crate::doom::r_sky::R_InitSkyMap();
     R_InitTranslationTables();
-    libc::printf(c".".as_ptr());
+    super::startup::info(|| {
+        libc::printf(c".".as_ptr());
+    });
 
     framecount = 0;
 }

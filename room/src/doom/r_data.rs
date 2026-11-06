@@ -830,14 +830,16 @@ pub unsafe extern "C" fn R_InitTextures() {
     let temp3 = ((temp2 - temp1 + 63) / 64) + ((numtextures + 63) / 64);
 
     if I_ConsoleStdout() != 0 {
-        libc::printf(c"[".as_ptr());
-        for _ in 0..temp3 + 9 {
-            libc::printf(c" ".as_ptr());
-        }
-        libc::printf(c"]".as_ptr());
-        for _ in 0..temp3 + 10 {
-            libc::printf(c"\x08".as_ptr());
-        }
+        super::startup::info(|| {
+            libc::printf(c"[".as_ptr());
+            for _ in 0..temp3 + 9 {
+                libc::printf(c" ".as_ptr());
+            }
+            libc::printf(c"]".as_ptr());
+            for _ in 0..temp3 + 10 {
+                libc::printf(c"\x08".as_ptr());
+            }
+        });
     }
 
     let mut maptex = maptex1;
@@ -846,7 +848,9 @@ pub unsafe extern "C" fn R_InitTextures() {
 
     for i in 0..numtextures as usize {
         if (i & 63) == 0 {
-            libc::printf(c".".as_ptr());
+            super::startup::info(|| {
+                libc::printf(c".".as_ptr());
+            });
         }
 
         if i == numtextures1 as usize {
@@ -1013,7 +1017,9 @@ pub unsafe extern "C" fn R_InitSpriteLumps() {
 
     for i in 0..numspritelumps as usize {
         if (i & 63) == 0 {
-            libc::printf(c".".as_ptr());
+            super::startup::info(|| {
+                libc::printf(c".".as_ptr());
+            });
         }
 
         let patch = W_CacheLumpNum(firstspritelump + i as c_int, PU_CACHE) as *mut patch_t;
@@ -1070,11 +1076,17 @@ pub unsafe extern "C" fn R_InitColormaps() {
 #[no_mangle]
 pub unsafe extern "C" fn R_InitData() {
     R_InitTextures();
-    libc::printf(c".".as_ptr());
+    super::startup::info(|| {
+        libc::printf(c".".as_ptr());
+    });
     R_InitFlats();
-    libc::printf(c".".as_ptr());
+    super::startup::info(|| {
+        libc::printf(c".".as_ptr());
+    });
     R_InitSpriteLumps();
-    libc::printf(c".".as_ptr());
+    super::startup::info(|| {
+        libc::printf(c".".as_ptr());
+    });
     R_InitColormaps();
 }
 

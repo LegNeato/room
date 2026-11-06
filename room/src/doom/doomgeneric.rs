@@ -135,6 +135,25 @@ extern "C" {
 ///   would leak the first screen buffer and overwrite `myargc`/`myargv`.
 #[no_mangle]
 pub unsafe extern "C" fn doomgeneric_Create(argc: c_int, argv: *mut *mut c_char) {
+    unsafe { create_with_startup_log(argc, argv, super::startup::StartupLog::Normal) };
+}
+
+/// Initializes the engine with an explicit informational startup log mode.
+/// All errors and warnings remain visible. The mode ends when this call returns.
+///
+/// # Safety
+/// The requirements of [`doomgeneric_Create`] apply. The caller must exclusively
+/// own the active Doom static image and keep it active on this worker throughout
+/// initialization, including platform callbacks.
+pub unsafe fn create_with_startup_log(
+    argc: c_int,
+    argv: *mut *mut c_char,
+    log: super::startup::StartupLog,
+) {
+    unsafe { super::startup::scoped(log, || initialize(argc, argv)) };
+}
+
+unsafe fn initialize(argc: c_int, argv: *mut *mut c_char) {
     // Anchor all ported module symbols so they survive LTO (called only from C).
     P_Ceilng_Link_Anchor();
     P_Doors_Link_Anchor();

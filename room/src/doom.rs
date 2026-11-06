@@ -89,6 +89,7 @@ pub mod sha1;
 pub mod sounds;
 pub mod st_lib;
 pub mod st_stuff;
+pub mod startup;
 pub mod statdump;
 pub mod statenum;
 pub mod tables;

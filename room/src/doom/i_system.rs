@@ -131,11 +131,13 @@ pub extern "C" fn I_ZoneBase(size: *mut c_int) -> *mut u8 {
 
         let zonemem = AutoAllocMemory(size, default_ram, min_ram);
 
-        libc::printf(
-            c"zone memory: %p, %x allocated for zone\n".as_ptr(),
-            zonemem,
-            *size,
-        );
+        super::startup::info(|| {
+            libc::printf(
+                c"zone memory: %p, %x allocated for zone\n".as_ptr(),
+                zonemem,
+                *size,
+            );
+        });
 
         zonemem
     }

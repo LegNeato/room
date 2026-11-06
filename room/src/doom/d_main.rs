@@ -1323,7 +1323,7 @@ pub extern "C" fn D_SetGameDescription() {
 /// `filename` must be a valid, null-terminated C string pointer that remains live for the
 /// duration of the call.
 unsafe fn D_AddFile(filename: *mut c_char) -> bool {
-    println!(" adding {}", c_str_to_str(filename));
+    super::startup::info(|| println!(" adding {}", c_str_to_str(filename)));
     let handle = W_AddFile(filename);
     !handle.is_null()
 }
@@ -1468,10 +1468,12 @@ pub extern "C" fn PrintGameVersion() {
                 break;
             }
             if gv.version == gameversion {
-                println!(
-                    "Emulating the behavior of the '{}' executable.",
-                    c_str_to_str(gv.description.0)
-                );
+                super::startup::info(|| {
+                    println!(
+                        "Emulating the behavior of the '{}' executable.",
+                        c_str_to_str(gv.description.0)
+                    );
+                });
                 break;
             }
         }
@@ -1522,10 +1524,10 @@ pub extern "C" fn D_DoomMain() {
         I_AtExit(D_Endoom, Boolean::FALSE);
 
         // Print banner
-        I_PrintBanner(c"Room".as_ptr().cast_mut());
+        super::startup::info(|| I_PrintBanner(c"Room".as_ptr().cast_mut()));
 
         // Init zone memory
-        println!("Z_Init: Init zone memory allocation daemon.");
+        super::startup::info(|| println!("Z_Init: Init zone memory allocation daemon."));
         Z_Init();
 
         // Check command-line flags
@@ -1561,7 +1563,7 @@ pub extern "C" fn D_DoomMain() {
             }
             scale = scale.clamp(10, 400);
 
-            println!("turbo scale: {}%", scale);
+            super::startup::info(|| println!("turbo scale: {}%", scale));
 
             forwardmove[0] = forwardmove[0] * scale / 100;
             forwardmove[1] = forwardmove[1] * scale / 100;
@@ -1570,11 +1572,11 @@ pub extern "C" fn D_DoomMain() {
         }
 
         // Init subsystems
-        println!("V_Init: allocate screens.");
+        super::startup::info(|| println!("V_Init: allocate screens."));
         V_Init();
 
         // Load configuration
-        println!("M_LoadDefaults: Load system defaults.");
+        super::startup::info(|| println!("M_LoadDefaults: Load system defaults."));
         M_SetConfigFilenames(
             c"default.cfg".as_ptr().cast_mut(),
             c"doom.cfg".as_ptr().cast_mut(),
@@ -1593,7 +1595,7 @@ pub extern "C" fn D_DoomMain() {
 
         modifiedgame = Boolean::FALSE;
 
-        println!("W_Init: Init WADfiles.");
+        super::startup::info(|| println!("W_Init: Init WADfiles."));
         D_AddFile(iwadfile);
 
         W_CheckCorrectIWAD(d_mode::doom);
@@ -1604,7 +1606,7 @@ pub extern "C" fn D_DoomMain() {
 
         // BFG Edition check
         if W_CheckNumForName(c"dmenupic".as_ptr()) >= 0 {
-            println!("BFG Edition: Using workarounds as needed.");
+            super::startup::info(|| println!("BFG Edition: Using workarounds as needed."));
             bfgedition = 1;
 
             // BFG changes secret level names
@@ -1648,7 +1650,7 @@ pub extern "C" fn D_DoomMain() {
                 M_StringCopy(demolumpname.as_mut_ptr(), arg, demolumpname.len());
             }
 
-            println!("Playing demo {}.", c_str_to_str(file.as_ptr()));
+            super::startup::info(|| println!("Playing demo {}.", c_str_to_str(file.as_ptr())));
         }
 
         // Note: G_CheckDemoStatus atexit registration is handled via the game flow.
@@ -1689,8 +1691,10 @@ pub extern "C" fn D_DoomMain() {
         }
 
         // Print startup banner
-        I_PrintStartupBanner(gamedescription);
-        PrintDehackedBanners();
+        super::startup::info(|| {
+            I_PrintStartupBanner(gamedescription);
+            PrintDehackedBanners();
+        });
 
         // Freedoom warning
         if W_CheckNumForName(c"FREEDOOM".as_ptr()) >= 0 && W_CheckNumForName(c"FREEDM".as_ptr()) < 0
@@ -1705,7 +1709,7 @@ pub extern "C" fn D_DoomMain() {
         }
 
         // Initialize I subsystems
-        println!("I_Init: Setting up machine state.");
+        super::startup::info(|| println!("I_Init: Setting up machine state."));
         I_CheckIsScreensaver();
         I_InitTimer();
         I_InitJoystick();
@@ -1782,28 +1786,28 @@ pub extern "C" fn D_DoomMain() {
         }
 
         // Init remaining subsystems
-        println!("M_Init: Init miscellaneous info.");
+        super::startup::info(|| println!("M_Init: Init miscellaneous info."));
         M_Init();
 
-        print!("R_Init: Init DOOM refresh daemon - ");
+        super::startup::info(|| print!("R_Init: Init DOOM refresh daemon - "));
         R_Init();
-        println!();
+        super::startup::info(|| println!());
 
-        println!("P_Init: Init Playloop state.");
+        super::startup::info(|| println!("P_Init: Init Playloop state."));
         P_Init();
 
-        println!("S_Init: Setting up sound.");
+        super::startup::info(|| println!("S_Init: Setting up sound."));
         S_Init(sfxVolume * 8, musicVolume * 8);
 
-        println!("D_CheckNetGame: Checking network game status.");
+        super::startup::info(|| println!("D_CheckNetGame: Checking network game status."));
         D_CheckNetGame();
 
         PrintGameVersion();
 
-        println!("HU_Init: Setting up heads up display.");
+        super::startup::info(|| println!("HU_Init: Setting up heads up display."));
         HU_Init();
 
-        println!("ST_Init: Init status bar.");
+        super::startup::info(|| println!("ST_Init: Init status bar."));
         ST_Init();
 
         // Store demo check
@@ -1813,7 +1817,7 @@ pub extern "C" fn D_DoomMain() {
 
         // -statdump
         if M_CheckParmWithArgs(c"-statdump".as_ptr().cast_mut(), 1) > 0 {
-            println!("External statistics registered.");
+            super::startup::info(|| println!("External statistics registered."));
         }
 
         // -record
